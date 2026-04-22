@@ -20,10 +20,8 @@ import type { TableType } from '../context/AppContext';
 
 const getTableRate = (type: TableType): number => {
   switch (type) {
-    case '6ft': return 40;
-    case '8ft': return 50;
-    case '9ft': return 60;
-    case 'snooker': return 70;
+    case 'carambola': return 60;
+    case 'billar': return 50;
     default: return 50;
   }
 };
@@ -63,7 +61,7 @@ export function TableSession() {
   if (receipt) {
     return (
       <Layout>
-        <Dialog open={true} onOpenChange={() => {}}>
+        <Dialog open={true} onOpenChange={() => navigate('/tables')}>
           <DialogContent
             className="bg-zinc-950 border-zinc-800 max-w-md w-full p-0 overflow-hidden"
             onPointerDownOutside={(e) => e.preventDefault()}
