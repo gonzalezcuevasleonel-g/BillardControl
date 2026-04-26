@@ -1,23 +1,52 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { motion } from 'motion/react';
-import { Lock, User, Circle } from 'lucide-react';
+import { Lock, User, Circle, Mail } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
+import { toast } from 'sonner';
 
 export function Login() {
+  const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState('');
+  const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
+  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const { login } = useApp();
+  const { login, register } = useApp();
   const navigate = useNavigate();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError('');
     setIsLoading(true);
+
+    if (isRegister) {
+      if (password !== confirmPassword) {
+        setError('Las contraseñas no coinciden');
+        setIsLoading(false);
+        return;
+      }
+      if (password.length < 6) {
+        setError('La contraseña debe tener al menos 6 caracteres');
+        setIsLoading(false);
+        return;
+      }
+
+      const result = await register(username, email, password);
+      if (result.success) {
+        toast.success('Usuario registrado exitosamente');
+        setIsRegister(false);
+        setPassword('');
+        setConfirmPassword('');
+      } else {
+        setError(result.error || 'Error al registrar usuario');
+      }
+      setIsLoading(false);
+      return;
+    }
 
     const success = await login(username, password);
     if (success) {
@@ -87,14 +116,15 @@ export function Login() {
                   className="absolute inset-0 rounded-full bg-green-500/20 blur-md"
                 />
               </div>
-              {/* Cambio de titulo*/}
               <h1 className="text-3xl font-bold text-white mb-2">
                 Billar<span className="text-green-400">Control</span>
               </h1>
-              <p className="text-zinc-500 text-sm">Sistema de Gestión</p>
+              <p className="text-zinc-500 text-sm">
+                {isRegister ? 'Crear nueva cuenta' : 'Sistema de Gestión'}
+              </p>
             </div>
 
-            {/* Login Form */}
+            {/* Form */}
             <form onSubmit={handleSubmit} className="space-y-6">
               <div>
                 <label className="block text-sm font-medium text-zinc-400 mb-2">
@@ -113,6 +143,29 @@ export function Login() {
                 </div>
               </div>
 
+              {isRegister && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                >
+                  <label className="block text-sm font-medium text-zinc-400 mb-2">
+                    Email
+                  </label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
+                    <Input
+                      type="email"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-10 bg-zinc-800 border-zinc-700 text-white focus:border-green-500 focus:ring-green-500/20"
+                      placeholder="tu@email.com"
+                      required
+                    />
+                  </div>
+                </motion.div>
+              )}
+
               <div>
                 <label className="block text-sm font-medium text-zinc-400 mb-2">
                   Contraseña
@@ -130,6 +183,29 @@ export function Login() {
                 </div>
               </div>
 
+              {isRegister && (
+                <motion.div
+                  initial={{ opacity: 0, height: 0 }}
+                  animate={{ opacity: 1, height: 'auto' }}
+                  exit={{ opacity: 0, height: 0 }}
+                >
+                  <label className="block text-sm font-medium text-zinc-400 mb-2">
+                    Confirmar Contraseña
+                  </label>
+                  <div className="relative">
+                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
+                    <Input
+                      type="password"
+                      value={confirmPassword}
+                      onChange={(e) => setConfirmPassword(e.target.value)}
+                      className="pl-10 bg-zinc-800 border-zinc-700 text-white focus:border-green-500 focus:ring-green-500/20"
+                      placeholder="Confirma tu contraseña"
+                      required
+                    />
+                  </div>
+                </motion.div>
+              )}
+
               {error && (
                 <motion.div
                   initial={{ opacity: 0, y: -10 }}
@@ -145,18 +221,28 @@ export function Login() {
                 disabled={isLoading}
                 className="w-full bg-green-500 hover:bg-green-600 text-black font-semibold shadow-lg shadow-green-500/30 disabled:opacity-50"
               >
-                {isLoading ? 'Verificando...' : 'Iniciar Sesión'}
+                {isLoading
+                  ? 'Procesando...'
+                  : isRegister
+                  ? 'Registrarse'
+                  : 'Iniciar Sesión'}
               </Button>
             </form>
 
-            <div className="mt-6 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700">
-              <Button
+            {/* Toggle Register/Login */}
+            <div className="mt-6 text-center">
+              <button
                 type="button"
-                onClick={() => { }}
-                className="w-full bg-gray-500 hover:bg-gray-600 text-white font-semibold shadow-lg shadow-gray-500/30 disabled:opacity-50"
+                onClick={() => {
+                  setIsRegister(!isRegister);
+                  setError('');
+                }}
+                className="text-sm text-zinc-400 hover:text-green-400 transition-colors"
               >
-                ¿Olvidaste tu contraseña?
-              </Button>
+                {isRegister
+                  ? '¿Ya tienes cuenta? Inicia sesión'
+                  : '¿No tienes cuenta? Regístrate'}
+              </button>
             </div>
           </div>
         </div>
@@ -164,3 +250,4 @@ export function Login() {
     </div>
   );
 }
+

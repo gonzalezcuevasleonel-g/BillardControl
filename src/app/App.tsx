@@ -7,7 +7,7 @@ export default function App() {
   return (
     <AppProvider>
       <RouterProvider router={router} />
-      <Toaster 
+      <Toaster
         position="top-right"
         theme="dark"
         toastOptions={{
@@ -21,3 +21,4 @@ export default function App() {
     </AppProvider>
   );
 }
+

@@ -69,13 +69,13 @@ export function Sales() {
 
   const total = cart.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
-  const handleCheckout = () => {
+  const handleCheckout = async () => {
     if (cart.length === 0) {
       toast.error('El carrito está vacío');
       return;
     }
 
-    createPOSSale(cart);
+    await createPOSSale(cart);
     setCart([]);
     toast.success('Venta registrada exitosamente');
   };

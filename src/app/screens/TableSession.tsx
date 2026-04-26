@@ -16,16 +16,6 @@ import { Layout } from '../components/Layout';
 import { Button } from '../components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 
-import type { TableType } from '../context/AppContext';
-
-const getTableRate = (type: TableType): number => {
-  switch (type) {
-    case 'carambola': return 60;
-    case 'billar': return 50;
-    default: return 50;
-  }
-};
-
 export function TableSession() {
   const { tableId } = useParams();
   const navigate = useNavigate();
@@ -37,7 +27,7 @@ export function TableSession() {
   // Receipt state — stores a snapshot of the session when "Finalizar" is pressed
   const [receipt, setReceipt] = useState<{
     tableName: string;
-    tableType: TableType;
+    hourlyRate: number;
     elapsedSeconds: number;
     products: { name: string; price: number; quantity: number }[];
     tableCost: number;
@@ -46,7 +36,7 @@ export function TableSession() {
     endTime: Date;
   } | null>(null);
 
-  const table = tables.find((t) => t.id === Number(tableId));
+  const table = tables.find((t) => t.id === tableId);
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -101,8 +91,8 @@ export function TableSession() {
                   <p className="text-white text-2xl font-bold">{receipt.tableName}</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-zinc-400 text-xs uppercase tracking-widest">Tipo</p>
-                  <p className="text-zinc-300 font-semibold capitalize">{receipt.tableType}</p>
+                  <p className="text-zinc-400 text-xs uppercase tracking-widest">Tarifa</p>
+                  <p className="text-zinc-300 font-semibold">${receipt.hourlyRate}/hr</p>
                 </div>
               </div>
 
@@ -117,7 +107,7 @@ export function TableSession() {
                 <div className="text-right">
                   <span className="text-white font-mono font-bold">{formatTime(receipt.elapsedSeconds)}</span>
                   <p className="text-zinc-500 text-xs">
-                    ${getTableRate(receipt.tableType)}/hr → ${receipt.tableCost.toFixed(2)}
+                    ${receipt.hourlyRate}/hr → ${receipt.tableCost.toFixed(2)}
                   </p>
                 </div>
               </div>
@@ -210,7 +200,7 @@ export function TableSession() {
   }
 
   const timeInHours = table.elapsedSeconds / 3600;
-  const tableCost = timeInHours * getTableRate(table.type);
+  const tableCost = timeInHours * table.hourly_rate;
   const productsCost = table.products.reduce(
     (sum, item) => sum + item.price * item.quantity,
     0
@@ -228,13 +218,13 @@ export function TableSession() {
 
   const handleEndSession = () => {
     const timeInHours = table.elapsedSeconds / 3600;
-    const tCost = timeInHours * getTableRate(table.type);
+    const tCost = timeInHours * table.hourly_rate;
     const pCost = table.products.reduce((sum, item) => sum + item.price * item.quantity, 0);
 
     // 1. Snapshot the data into local state
     setReceipt({
       tableName: table.name,
-      tableType: table.type,
+      hourlyRate: table.hourly_rate,
       elapsedSeconds: table.elapsedSeconds,
       products: [...table.products],
       tableCost: tCost,
@@ -243,9 +233,7 @@ export function TableSession() {
       endTime: new Date(),
     });
 
-    // 2. End the session — this will cause table to disappear from context,
-    //    but `receipt` state is now set so the receipt branch renders instead
-    //    of the "mesa no encontrada" fallback.
+    // 2. End the session
     endTableSession(table.id);
   };
 
@@ -270,7 +258,7 @@ export function TableSession() {
             </Button>
             <div>
               <h1 className="text-3xl font-bold text-white">{table.name}</h1>
-              <p className="text-zinc-500">Sesión activa</p>
+              <p className="text-zinc-500">Sesión activa · ${table.hourly_rate}/hr</p>
             </div>
           </div>
         </div>
@@ -311,7 +299,7 @@ export function TableSession() {
                       ${tableCost.toFixed(2)}
                     </span>
                   </div>
-                  <p className="text-xs text-zinc-500 mt-1">${getTableRate(table.type)}/hora</p>
+                  <p className="text-xs text-zinc-500 mt-1">${table.hourly_rate}/hora</p>
                 </div>
               </div>
             </motion.div>
@@ -514,3 +502,4 @@ export function TableSession() {
     </Layout>
   );
 }
+

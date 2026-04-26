@@ -11,7 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 
 export function Inventory() {
-  const { products, updateProduct, addProduct } = useApp();
+  const { products, updateProduct, addProduct, currentUserRoleId, currentUserRole } = useApp();
+  const isAdmin = Number(currentUserRoleId) === 1 || currentUserRole === 'admin';
+  
+  // Debug: log role info to browser console
+  console.log('Role debug:', { currentUserRoleId, currentUserRole, isAdmin });
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -34,7 +38,7 @@ export function Inventory() {
       name: product.name,
       price: product.price.toString(),
       stock: product.stock.toString(),
-      category: product.category,
+      category: product.category.toString() as 'beer' | 'snack' | 'drink',
     });
     setShowModal(true);
   };
@@ -339,7 +343,7 @@ export function Inventory() {
 
             <div className="grid grid-cols-2 gap-4">
               <div>
-                <Label className="text-zinc-400">Precio Compra</Label>
+                <Label className="text-zinc-400">Precio</Label>
                 <Input
                   type="number"
                   value={formData.price}
@@ -349,7 +353,14 @@ export function Inventory() {
                   className="bg-zinc-800 border-zinc-700 text-white mt-1"
                   placeholder="0.00"
                   step="0.01"
+                  disabled={!isAdmin}
+                  title={!isAdmin ? 'Solo administradores pueden editar precios' : ''}
                 />
+                {!isAdmin && (
+                  <p className="text-xs text-orange-400 mt-1">
+                    Solo admin puede editar precios
+                  </p>
+                )}
               </div>
 
               <div>
@@ -364,20 +375,6 @@ export function Inventory() {
                   placeholder="0"
                 />
               </div>
-              <div>
-                <Label className="text-zinc-400">Precio Venta</Label>
-                <Input
-                  type="number"
-                  value={formData.price}
-                  onChange={(e) =>
-                    setFormData({ ...formData, price: e.target.value })
-                  }
-                  className="bg-zinc-800 border-zinc-700 text-white mt-1"
-                  placeholder="0.00"
-                  step="0.01"
-                />
-              </div>
-              
             </div>
 
             <div className="flex gap-3 pt-4">

@@ -24,19 +24,14 @@ import {
 import { toast } from 'sonner';
 
 export function CashRegister() {
-  const { sales, tables, dailyEarnings, closeDailyCut } = useApp();
+  const { sales, dailyEarnings, closeDailyCut } = useApp();
 
-  const getTableName = (sale: any, tables: any[]) => {
-    if (sale.type !== 'table' || !sale.tableId) return null;
-    const table = tables.find(t => t.id === sale.tableId);
-    return table ? table.name : `Mesa ${sale.tableId}`;
-  };
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [cashDifference, setCashDifference] = useState('');
   const [showExportOptions, setShowExportOptions] = useState(false);
 
-  const tableSales = sales.filter((s) => s.type === 'table');
-  const posSales = sales.filter((s) => s.type === 'pos');
+  const tableSales = sales.filter((s) => s.session_id);
+  const posSales = sales.filter((s) => !s.session_id);
 
   const tableEarnings = tableSales.reduce((sum, sale) => sum + sale.total, 0);
   const posEarnings = posSales.reduce((sum, sale) => sum + sale.total, 0);
@@ -79,15 +74,14 @@ export function CashRegister() {
   // FORMATO 1: Para Base de Datos (Estructura plana, una fila por venta)
   const exportRawCSV = () => {
     const excelMagic = 'sep=,\r\n';
-    const csvHeader = 'Fecha,Tipo,Mesa,Productos,Tiempo,Total\r\n';
+    const csvHeader = 'Fecha,Tipo,Productos,Total\r\n';
     let csvContent = excelMagic + csvHeader;
 
     sales.forEach(sale => {
-      const tableName = getTableName(sale, tables) || 'N/A';
-      const timeStr = sale.tableTime ? formatTime(sale.tableTime) : '';
+      const typeLabel = sale.session_id ? 'Mesa' : 'Venta Directa';
       const productsStr = sale.items.map(item => `${item.quantity}x ${item.name}`).join(' - ');
       
-      csvContent += `"${formatDate(sale.timestamp)}","${sale.type === 'table' ? 'Mesa' : 'Venta Directa'}","${tableName}","${productsStr}","${timeStr}","${sale.total.toFixed(2)}"\r\n`;
+      csvContent += `"${formatDate(sale.timestamp)}","${typeLabel}","${productsStr}","${sale.total.toFixed(2)}"\r\n`;
     });
 
     downloadFile(csvContent, 'base_datos_ventas');
@@ -100,17 +94,15 @@ export function CashRegister() {
     let csvContent = excelMagic + csvHeader;
 
     sales.forEach(sale => {
-      const tableName = sale.type === 'table' ? `Mesa ${getTableName(sale, tables)}` : 'Venta Directa';
+      const typeLabel = sale.session_id ? 'Venta de Mesa' : 'Venta Directa';
       
       // Encabezado de la venta
-      csvContent += `"${formatDate(sale.timestamp)} - ${tableName}","","",""\r\n`;
+      csvContent += `"${formatDate(sale.timestamp)} - ${typeLabel}","","",""\r\n`;
       
       // Listado de productos
       sale.items.forEach(item => {
         csvContent += `"${item.name}","${item.quantity}","$${item.price.toFixed(2)}","$${(item.price * item.quantity).toFixed(2)}"\r\n`;
       });
-
-      if (sale.tableTime) csvContent += `"Tiempo de mesa","","","${formatTime(sale.tableTime)}"\r\n`;
       
       csvContent += `,"","TOTAL VENTA:","$${sale.total.toFixed(2)}"\r\n`;
       csvContent += `\r\n`; // Espacio entre ventas
@@ -291,9 +283,7 @@ export function CashRegister() {
                 <div className="flex flex-col sm:flex-row sm:items-start sm:justify-between gap-2 mb-2">
                   <div>
                     <p className="text-white font-medium">
-                      {sale.type === 'table' 
-                        ? `Mesa ${getTableName(sale, tables)}`
-                        : 'Venta Directa'}
+                      {sale.session_id ? 'Venta de Mesa' : 'Venta Directa'}
                     </p>
                     <p className="text-xs text-zinc-500">
                       {formatDate(sale.timestamp)}
@@ -303,12 +293,6 @@ export function CashRegister() {
                     ${sale.total.toFixed(2)}
                   </p>
                 </div>
-                {sale.tableTime && (
-                  <div className="flex justify-between text-xs mb-2">
-                    <span className="text-zinc-400">Tiempo:</span>
-                    <span className="text-green-400">{formatTime(sale.tableTime)}</span>
-                  </div>
-                )}
                 {sale.items.length > 0 && (
                   <div className="text-xs text-zinc-400">
                     {sale.items.map((item, idx) => (
@@ -441,3 +425,4 @@ export function CashRegister() {
     </Layout>
   );
 }
+

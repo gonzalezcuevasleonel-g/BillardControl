@@ -19,11 +19,11 @@ export function Tables() {
       .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleStartSession = (tableId: number) => {
+  const handleStartSession = (tableId: string) => {
     startTableSession(tableId);
   };
 
-  const handleManageSession = (tableId: number) => {
+  const handleManageSession = (tableId: string) => {
     navigate(`/tables/${tableId}`);
   };
 
@@ -111,7 +111,7 @@ export function Tables() {
                           {table.status === 'occupied' ? 'Ocupada' : 'Disponible'}
                         </p>
                         <span className="px-2 py-0.5 bg-zinc-700 text-xs rounded-full text-zinc-400">
-                          {table.type}
+                          ${table.hourly_rate}/hr
                         </span>
                       </div>
                     </div>

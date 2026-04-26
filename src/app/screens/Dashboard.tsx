@@ -13,12 +13,6 @@ import { Layout } from '../components/Layout';
 export function Dashboard() {
   const { tables, dailyEarnings, sales, products } = useApp();
 
-  const getTableName = (sale: any, tables: any[]) => {
-    if (sale.type !== 'table' || !sale.tableId) return null;
-    const table = tables.find(t => t.id === sale.tableId);
-    return table ? table.name : `Mesa ${sale.tableId}`;
-  };
-
   const activeTables = tables.filter((t) => t.status === 'occupied').length;
   const availableTables = tables.filter((t) => t.status === 'available').length;
   const productsSoldToday = sales.reduce(
@@ -221,9 +215,7 @@ export function Dashboard() {
                     <div className="flex items-start justify-between mb-2">
                       <div>
                         <p className="text-white font-medium">
-                          {sale.type === 'table'
-                            ? `Mesa ${getTableName(sale, tables)}`
-                            : 'Venta Directa'}
+                          {sale.session_id ? 'Venta de Mesa' : 'Venta Directa'}
                         </p>
                         <p className="text-xs text-zinc-500">
                           {formatDate(sale.timestamp)}
@@ -283,3 +275,4 @@ export function Dashboard() {
     </Layout>
   );
 }
+
