@@ -3,6 +3,12 @@ import { createClient } from '@supabase/supabase-js';
 const supabaseUrl = import.meta.env.VITE_SUPABASE_URL;
 const supabaseKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
 
+if (!supabaseUrl || !supabaseKey) {
+  throw new Error(
+    'Missing Supabase environment variables: VITE_SUPABASE_URL and VITE_SUPABASE_PUBLISHABLE_KEY must be defined in .env'
+  );
+}
+
 export const supabase = createClient(supabaseUrl, supabaseKey);
 
 // ============================================
@@ -12,12 +18,9 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 export type TableStatus = 'available' | 'occupied';
 
 export interface DbUser {
-  id: string;
+  id_user: string;
   username: string;
-  email: string;
-  password: string;
-  id_role: number;
-  role: 'admin' | 'trabajador';
+  id_rol: number;
   created_at: string;
   updated_at: string;
 }
@@ -27,8 +30,8 @@ export interface DbProduct {
   name: string;
   price: number;
   stock: number;
+  min_stock: number;
   category: string;
-  created_at: string;
   updated_at: string;
 }
 
@@ -37,7 +40,6 @@ export interface DbTable {
   name: string;
   hourly_rate: number;
   status: TableStatus;
-  created_at: string;
 }
 
 export interface DbTableSession {
@@ -77,10 +79,10 @@ export async function loginUser(username: string, password: string) {
     p_username: username,
     p_password: password,
   });
-  return { data: data as { id: string; username: string; role: string; id_role: number }[] | null, error };
+  return { data: data as { id_user: string; username: string; id_rol: number; created_at: string; updated_at: string }[] | null, error };
 }
 
-export async function insertUser(user: { username: string; email: string; password: string; id_role?: number; role?: string }) {
+export async function insertUser(user: { username: string; password: string; id_rol?: number }) {
   const { data, error } = await supabase
     .from('users')
     .insert(user)
@@ -98,11 +100,11 @@ export async function fetchProducts() {
   const { data, error } = await supabase
     .from('products')
     .select('*')
-    .order('created_at', { ascending: true });
+    .order('name');
   return { data: data as DbProduct[] | null, error };
 }
 
-export async function insertProduct(product: Omit<DbProduct, 'id' | 'created_at' | 'updated_at'>) {
+export async function insertProduct(product: Omit<DbProduct, 'id' | 'updated_at'>) {
   const { data, error } = await supabase
     .from('products')
     .insert(product)
@@ -131,11 +133,11 @@ export async function fetchTables() {
   const { data, error } = await supabase
     .from('tables')
     .select('*')
-    .order('created_at', { ascending: true });
+    .order('name');
   return { data: data as DbTable[] | null, error };
 }
 
-export async function insertTable(table: Omit<DbTable, 'id' | 'created_at'>) {
+export async function insertTable(table: Omit<DbTable, 'id'>) {
   const { data, error } = await supabase
     .from('tables')
     .insert(table)

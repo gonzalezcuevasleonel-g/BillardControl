@@ -1,4 +1,5 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
+import { toast } from 'sonner';
 import { supabase, loginUser } from '../../utils/supabase';
 import type { DbProduct, DbTable, DbTableSession, DbSale, DbSaleItem } from '../../utils/supabase';
 
@@ -7,6 +8,7 @@ export interface Product {
   name: string;
   price: number;
   stock: number;
+  min_stock: number;
   category: string;
 }
 
@@ -38,10 +40,9 @@ export interface Sale {
 }
 
 interface UserSession {
-  id: string;
+  id_user: string;
   username: string;
-  role: string;
-  id_role: number;
+  id_rol: number;
 }
 
 interface AppState {
@@ -52,7 +53,6 @@ interface AppState {
   isAuthenticated: boolean;
   currentUser: string | null;
   currentUserId: string | null;
-  currentUserRole: string | null;
   currentUserRoleId: number | null;
   isLoading: boolean;
 }
@@ -60,7 +60,7 @@ interface AppState {
 interface AppContextType extends AppState {
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
-  register: (username: string, email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  register: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   startTableSession: (tableId: string) => Promise<void>;
   endTableSession: (tableId: string) => Promise<void>;
   addProductToTable: (tableId: string, product: Product, quantity: number) => void;
@@ -81,6 +81,7 @@ function dbProductToProduct(db: DbProduct): Product {
     name: db.name,
     price: db.price,
     stock: db.stock,
+    min_stock: db.min_stock,
     category: db.category,
   };
 }
@@ -128,44 +129,28 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dailyEarnings: 0,
       isAuthenticated: !!userSession,
       currentUser: userSession?.username || null,
-      currentUserId: userSession?.id || null,
-      currentUserRole: userSession?.role || null,
-      currentUserRoleId: userSession?.id_role || null,
+      currentUserId: userSession?.id_user || null,
+      currentUserRoleId: userSession?.id_rol || null,
       isLoading: true,
     };
   });
 
-  // Check auth state and fetch data on mount
-  useEffect(() => {
-    const init = async () => {
-      const savedUser = localStorage.getItem('billarUserSession');
-      if (savedUser) {
-        await loadData();
-      }
-      setState(prev => ({ ...prev, isLoading: false }));
-    };
-    init();
-  }, []);
-
   const loadData = useCallback(async () => {
     try {
-      // Fetch products
       const { data: productsData, error: productsError } = await supabase
         .from('products')
         .select('*')
-        .order('created_at', { ascending: true });
+        .order('name');
 
       if (productsError) throw productsError;
 
-      // Fetch tables
       const { data: tablesData, error: tablesError } = await supabase
         .from('tables')
         .select('*')
-        .order('created_at', { ascending: true });
+        .order('name');
 
       if (tablesError) throw tablesError;
 
-      // Fetch active sessions
       const { data: sessionsData, error: sessionsError } = await supabase
         .from('table_sessions')
         .select('*')
@@ -173,7 +158,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (sessionsError) throw sessionsError;
 
-      // Fetch sales with items
       const { data: salesData, error: salesError } = await supabase
         .from('sales')
         .select(`
@@ -213,7 +197,20 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }));
     } catch (err: any) {
       console.error('Error loading data:', err);
+      toast.error('Error al cargar datos: ' + (err.message || 'Desconocido'));
     }
+  }, []);
+
+  // Check auth state and fetch data on mount
+  useEffect(() => {
+    const init = async () => {
+      const savedUser = localStorage.getItem('billarUserSession');
+      if (savedUser) {
+        await loadData();
+      }
+      setState(prev => ({ ...prev, isLoading: false }));
+    };
+    init();
   }, []);
 
   // Timer effect
@@ -247,47 +244,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
 
       const user = data[0];
-      
-      // Fallback: if id_role is missing from RPC response, fetch it directly
-      let idRole = user.id_role;
-      let userRole = user.role;
-      if (idRole === undefined || idRole === null) {
-        console.log('id_role missing from RPC, fetching from users table...');
-        const { data: userData } = await supabase
-          .from('users')
-          .select('id_role, role')
-          .eq('username', username)
-          .single();
-        if (userData) {
-          idRole = userData.id_role;
-          userRole = userData.role;
-          console.log('Fetched from users table:', { idRole, userRole });
-        }
-      }
-      
+
       const userSession: UserSession = {
-        id: user.id,
+        id_user: user.id_user,
         username: user.username,
-        role: userRole,
-        id_role: idRole,
+        id_rol: user.id_rol,
       };
       localStorage.setItem('billarUserSession', JSON.stringify(userSession));
-      
-      console.log('Login success - session:', userSession);
 
       setState(prev => ({
         ...prev,
         isAuthenticated: true,
         currentUser: user.username,
-        currentUserId: user.id,
-        currentUserRole: userRole,
-        currentUserRoleId: idRole,
+        currentUserId: user.id_user,
+        currentUserRoleId: user.id_rol,
       }));
 
       await loadData();
       return true;
     } catch (err: any) {
       console.error('Login error:', err);
+      toast.error('Error al iniciar sesión: ' + (err.message || 'Desconocido'));
       return false;
     }
   };
@@ -302,13 +279,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       isAuthenticated: false,
       currentUser: null,
       currentUserId: null,
-      currentUserRole: null,
       currentUserRoleId: null,
       isLoading: false,
     });
   };
 
-  const register = async (username: string, email: string, password: string) => {
+  const register = async (username: string, password: string) => {
     try {
       const { data: existingUser } = await supabase
         .from('users')
@@ -322,20 +298,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const { error } = await supabase.from('users').insert({
         username,
-        email,
         password,
-        id_role: 2,
-        role: 'trabajador',
+        id_rol: 2,
       });
 
       if (error) {
         console.error('Error registering user:', error);
+        toast.error('Error al registrar: ' + error.message);
         return { success: false, error: error.message };
       }
 
+      toast.success('Usuario registrado exitosamente');
       return { success: true };
     } catch (err: any) {
       console.error('Register error:', err);
+      toast.error('Error al registrar: ' + err.message);
       return { success: false, error: err.message };
     }
   };
@@ -349,9 +326,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       console.error('Error adding table:', error);
+      toast.error('Error al agregar mesa: ' + error.message);
       return;
     }
 
+    toast.success('Mesa agregada');
     setState(prev => ({
       ...prev,
       tables: [...prev.tables, dbTableToTable(data)],
@@ -365,9 +344,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { error } = await supabase.from('tables').update(updates).eq('id', id);
     if (error) {
       console.error('Error updating table:', error);
+      toast.error('Error al actualizar mesa: ' + error.message);
       return;
     }
 
+    toast.success('Mesa actualizada');
     setState(prev => ({
       ...prev,
       tables: prev.tables.map(t =>
@@ -379,16 +360,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const deleteTable = async (id: string) => {
     const table = state.tables.find(t => t.id === id);
     if (table?.status === 'occupied') {
-      alert('No puedes eliminar una mesa en uso');
+      toast.error('No puedes eliminar una mesa en uso');
       return;
     }
 
     const { error } = await supabase.from('tables').delete().eq('id', id);
     if (error) {
       console.error('Error deleting table:', error);
+      toast.error('Error al eliminar mesa: ' + error.message);
       return;
     }
 
+    toast.success('Mesa eliminada');
     setState(prev => ({
       ...prev,
       tables: prev.tables.filter(t => t.id !== id),
@@ -401,7 +384,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     const now = new Date().toISOString();
 
-    // Create table session
     const { data: sessionData, error: sessionError } = await supabase
       .from('table_sessions')
       .insert({
@@ -415,10 +397,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (sessionError || !sessionData) {
       console.error('Error creating session:', sessionError);
+      toast.error('Error al iniciar sesión: ' + (sessionError?.message || 'Desconocido'));
       return;
     }
 
-    // Update table status
     await supabase.from('tables').update({ status: 'occupied' }).eq('id', tableId);
 
     setState(prev => ({
@@ -453,7 +435,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
     );
     const total = tableCost + productsCost;
 
-    // Update table session
     await supabase
       .from('table_sessions')
       .update({
@@ -463,7 +444,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       })
       .eq('id', table.sessionId);
 
-    // Create sale
     const { data: saleData, error: saleError } = await supabase
       .from('sales')
       .insert({
@@ -476,10 +456,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (saleError || !saleData) {
       console.error('Error creating sale:', saleError);
+      toast.error('Error al crear venta: ' + (saleError?.message || 'Desconocido'));
       return;
     }
 
-    // Create sale items
     if (table.products.length > 0) {
       const saleItems = table.products.map(p => ({
         sale_id: saleData.id_sale,
@@ -492,10 +472,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const { error: itemsError } = await supabase.from('sale_items').insert(saleItems);
       if (itemsError) {
         console.error('Error creating sale items:', itemsError);
+        toast.error('Error al registrar productos: ' + itemsError.message);
       }
     }
 
-    // Update product stock
     for (const item of table.products) {
       const product = state.products.find(p => p.id === item.productId);
       if (product) {
@@ -504,10 +484,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
 
-    // Update table status
     await supabase.from('tables').update({ status: 'available' }).eq('id', tableId);
 
-    // Refresh data
+    toast.success('Sesión finalizada');
     await loadData();
   };
 
@@ -552,6 +531,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (saleError || !saleData) {
       console.error('Error creating POS sale:', saleError);
+      toast.error('Error al crear venta: ' + (saleError?.message || 'Desconocido'));
       return;
     }
 
@@ -566,9 +546,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const { error: itemsError } = await supabase.from('sale_items').insert(saleItems);
     if (itemsError) {
       console.error('Error creating sale items:', itemsError);
+      toast.error('Error al registrar productos: ' + itemsError.message);
     }
 
-    // Update stock
     for (const item of items) {
       const product = state.products.find(p => p.id === item.productId);
       if (product) {
@@ -577,6 +557,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       }
     }
 
+    toast.success('Venta registrada');
     await loadData();
   };
 
@@ -587,15 +568,18 @@ export function AppProvider({ children }: { children: ReactNode }) {
         name: product.name,
         price: product.price,
         stock: product.stock,
+        min_stock: product.min_stock,
         category: product.category,
       })
       .eq('id', product.id);
 
     if (error) {
       console.error('Error updating product:', error);
+      toast.error('Error al actualizar producto: ' + error.message);
       return;
     }
 
+    toast.success('Producto actualizado');
     setState(prev => ({
       ...prev,
       products: prev.products.map(p => p.id === product.id ? product : p),
@@ -611,9 +595,11 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     if (error) {
       console.error('Error adding product:', error);
+      toast.error('Error al agregar producto: ' + error.message);
       return;
     }
 
+    toast.success('Producto agregado');
     setState(prev => ({
       ...prev,
       products: [...prev.products, dbProductToProduct(data)],
@@ -657,4 +643,3 @@ export function useApp() {
   if (!context) throw new Error('useApp must be used within AppProvider');
   return context;
 }
-

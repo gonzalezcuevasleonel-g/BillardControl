@@ -5,25 +5,40 @@ import { Layout } from "../components/Layout";
 import { Button } from "../components/ui/button";
 import { Pencil, Trash, Plus, ArrowLeft } from "lucide-react";
 
+const TABLE_TYPES = [
+  { label: "Billar", rate: 50 },
+  { label: "Snorkel", rate: 60 },
+  { label: "Carambola", rate: 70 },
+];
+
+function getTypeByRate(rate: number) {
+  return TABLE_TYPES.find((t) => t.rate === rate)?.label || "Mesa";
+}
+
 export function TablesEdit() {
   const navigate = useNavigate();
   const { tables, addTable, updateTable, deleteTable } = useApp();
 
   const [newName, setNewName] = useState("");
-  const [newRate, setNewRate] = useState(50);
+  const [newType, setNewType] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
-  const [editRate, setEditRate] = useState(50);
+  const [editType, setEditType] = useState("");
 
   const handleAdd = () => {
-    if (!newName.trim()) return;
-    addTable(newName, newRate);
+    if (!newName.trim() || !newType) return;
+    const selected = TABLE_TYPES.find((t) => t.label === newType);
+    if (!selected) return;
+    addTable(newName, selected.rate);
     setNewName("");
-    setNewRate(50);
+    setNewType("");
   };
 
   const handleUpdate = (id: string) => {
-    updateTable(id, editName, editRate);
+    if (!editName.trim() || !editType) return;
+    const selected = TABLE_TYPES.find((t) => t.label === editType);
+    if (!selected) return;
+    updateTable(id, editName, selected.rate);
     setEditingId(null);
   };
 
@@ -50,14 +65,19 @@ export function TablesEdit() {
             placeholder="Nombre de mesa"
             className="px-3 py-2 rounded bg-zinc-800 text-white border border-zinc-700 flex-1 min-w-[200px]"
           />
-          <input
-            type="number"
-            value={newRate}
-            onChange={(e) => setNewRate(Number(e.target.value))}
-            placeholder="Tarifa/hr"
-            className="px-3 py-2 rounded bg-zinc-800 text-white border border-zinc-700 w-[100px]"
-          />
-          <Button onClick={handleAdd} disabled={!newName.trim()}>
+          <select
+            value={newType}
+            onChange={(e) => setNewType(e.target.value)}
+            className="px-3 py-2 rounded bg-zinc-800 text-white border border-zinc-700"
+          >
+            <option value="">Tipo de mesa</option>
+            {TABLE_TYPES.map((t) => (
+              <option key={t.label} value={t.label}>
+                {t.label} (${t.rate}/hr)
+              </option>
+            ))}
+          </select>
+          <Button onClick={handleAdd} disabled={!newName.trim() || !newType}>
             <Plus className="w-4 h-4 mr-2" />
             Agregar
           </Button>
@@ -78,18 +98,23 @@ export function TablesEdit() {
                       onChange={(e) => setEditName(e.target.value)}
                       className="px-2 py-1 bg-zinc-800 text-white border border-zinc-700 rounded flex-1 min-w-0"
                     />
-                    <input
-                      type="number"
-                      value={editRate}
-                      onChange={(e) => setEditRate(Number(e.target.value))}
-                      className="px-2 py-1 bg-zinc-800 text-white border border-zinc-700 rounded w-[80px]"
-                    />
+                    <select
+                      value={editType}
+                      onChange={(e) => setEditType(e.target.value)}
+                      className="px-2 py-1 bg-zinc-800 text-white border border-zinc-700 rounded"
+                    >
+                      {TABLE_TYPES.map((t) => (
+                        <option key={t.label} value={t.label}>
+                          {t.label} (${t.rate}/hr)
+                        </option>
+                      ))}
+                    </select>
                   </div>
                 ) : (
                   <div className="flex items-center gap-2">
                     <span className="text-white font-medium truncate">{table.name}</span>
                     <span className="px-2 py-1 bg-zinc-700 text-xs rounded-full text-zinc-300">
-                      ${table.hourly_rate}/hr
+                      {getTypeByRate(table.hourly_rate)}
                     </span>
                   </div>
                 )}
@@ -97,7 +122,7 @@ export function TablesEdit() {
 
               <div className="flex gap-2">
                 {editingId === table.id ? (
-                  <Button onClick={() => handleUpdate(table.id)} disabled={!editName.trim()} size="sm">
+                  <Button onClick={() => handleUpdate(table.id)} disabled={!editName.trim() || !editType} size="sm">
                     Guardar
                   </Button>
                 ) : (
@@ -105,7 +130,7 @@ export function TablesEdit() {
                     onClick={() => {
                       setEditingId(table.id);
                       setEditName(table.name);
-                      setEditRate(table.hourly_rate);
+                      setEditType(getTypeByRate(table.hourly_rate));
                     }}
                     size="sm"
                   >

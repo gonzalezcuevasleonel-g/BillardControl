@@ -6,6 +6,16 @@ import { Button } from '../components/ui/button';
 import { useNavigate } from 'react-router';
 import { Pencil } from "lucide-react";
 
+const TABLE_TYPES = [
+  { label: "Billar", rate: 50 },
+  { label: "Snorkel", rate: 60 },
+  { label: "Carambola", rate: 70 },
+];
+
+function getTypeByRate(rate: number) {
+  return TABLE_TYPES.find((t) => t.rate === rate)?.label || "Mesa";
+}
+
 export function Tables() {
   const { tables, startTableSession } = useApp();
   const navigate = useNavigate();
@@ -111,7 +121,7 @@ export function Tables() {
                           {table.status === 'occupied' ? 'Ocupada' : 'Disponible'}
                         </p>
                         <span className="px-2 py-0.5 bg-zinc-700 text-xs rounded-full text-zinc-400">
-                          ${table.hourly_rate}/hr
+                          {getTypeByRate(table.hourly_rate)}
                         </span>
                       </div>
                     </div>

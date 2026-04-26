@@ -11,11 +11,11 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '.
 import { toast } from 'sonner';
 
 export function Inventory() {
-  const { products, updateProduct, addProduct, currentUserRoleId, currentUserRole } = useApp();
-  const isAdmin = Number(currentUserRoleId) === 1 || currentUserRole === 'admin';
-  
+  const { products, updateProduct, addProduct, currentUserRoleId } = useApp();
+  const isAdmin = Number(currentUserRoleId) === 1;
+
   // Debug: log role info to browser console
-  console.log('Role debug:', { currentUserRoleId, currentUserRole, isAdmin });
+  console.log('Role debug:', { currentUserRoleId, isAdmin });
   const [searchTerm, setSearchTerm] = useState('');
   const [showModal, setShowModal] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
@@ -24,6 +24,7 @@ export function Inventory() {
     name: '',
     price: '',
     stock: '',
+    min_stock: '',
     category: 'beer' as 'beer' | 'snack' | 'drink',
   });
 
@@ -38,6 +39,7 @@ export function Inventory() {
       name: product.name,
       price: product.price.toString(),
       stock: product.stock.toString(),
+      min_stock: product.min_stock.toString(),
       category: product.category.toString() as 'beer' | 'snack' | 'drink',
     });
     setShowModal(true);
@@ -50,6 +52,7 @@ export function Inventory() {
       name: '',
       price: '',
       stock: '',
+      min_stock: '',
       category: 'beer',
     });
     setShowModal(true);
@@ -65,6 +68,7 @@ export function Inventory() {
       name: formData.name,
       price: parseFloat(formData.price),
       stock: parseInt(formData.stock),
+      min_stock: parseInt(formData.min_stock || '0'),
       category: formData.category,
     };
 
@@ -115,7 +119,7 @@ export function Inventory() {
             <p className="text-zinc-500">Gestiona productos y stock</p>
             <p className="text-xs mt-1">
               <span className={isAdmin ? 'text-green-400' : 'text-orange-400'}>
-                Rol: {currentUserRole || 'desconocido'} (id_role: {currentUserRoleId ?? 'null'}) {isAdmin ? '- Admin ✅' : '- Trabajador'}
+                id_rol: {currentUserRoleId ?? 'null'} {isAdmin ? '- Admin ✅' : '- Trabajador'}
               </span>
             </p>
           </div>
@@ -170,7 +174,7 @@ export function Inventory() {
               <span className="text-zinc-400 text-sm">Stock Bajo</span>
             </div>
             <p className="text-3xl font-bold text-orange-400">
-              {products.filter((p) => p.stock < 20).length}
+              {products.filter((p) => p.stock <= p.min_stock).length}
             </p>
           </motion.div>
 
@@ -258,12 +262,12 @@ export function Inventory() {
                             <span className="px-3 py-1 rounded-full text-xs font-medium bg-red-500/10 text-red-400 border border-red-500/20">
                               Agotado
                             </span>
-                          ) : product.stock < 10 ? (
+                          ) : product.stock <= product.min_stock ? (
                             <span className="px-3 py-1 rounded-full text-xs font-medium bg-orange-500/10 text-orange-400 border border-orange-500/20 flex items-center gap-1 w-fit">
                               <AlertTriangle className="w-3 h-3" />
                               Bajo
                             </span>
-                          ) : product.stock < 20 ? (
+                          ) : product.stock <= product.min_stock * 2 ? (
                             <span className="px-3 py-1 rounded-full text-xs font-medium bg-yellow-500/10 text-yellow-400 border border-yellow-500/20">
                               Medio
                             </span>
@@ -303,18 +307,6 @@ export function Inventory() {
           </DialogHeader>
 
           <div className="space-y-4">
-            <div>
-              <Label className="text-zinc-400">ID Producto</Label>
-              <Input
-                value={formData.id}
-                onChange={(e) =>
-                  setFormData({ ...formData, name: e.target.value })
-                }
-                className="bg-zinc-800 border-zinc-700 text-white mt-1"
-                placeholder="Escanea Código de"
-              />
-            </div>
-
             <div>
               <Label className="text-zinc-400">Nombre</Label>
               <Input
@@ -379,6 +371,26 @@ export function Inventory() {
                   className="bg-zinc-800 border-zinc-700 text-white mt-1"
                   placeholder="0"
                 />
+              </div>
+
+              <div>
+                <Label className="text-zinc-400">Stock Mínimo</Label>
+                <Input
+                  type="number"
+                  value={formData.min_stock}
+                  onChange={(e) =>
+                    setFormData({ ...formData, min_stock: e.target.value })
+                  }
+                  className="bg-zinc-800 border-zinc-700 text-white mt-1"
+                  placeholder="0"
+                  disabled={!isAdmin}
+                  title={!isAdmin ? 'Solo administradores pueden editar stock mínimo' : ''}
+                />
+                {!isAdmin && (
+                  <p className="text-xs text-orange-400 mt-1">
+                    Solo admin puede editar stock mínimo
+                  </p>
+                )}
               </div>
             </div>
 
