@@ -113,6 +113,11 @@ export function Inventory() {
           <div>
             <h1 className="text-3xl font-bold text-white mb-2">Inventario</h1>
             <p className="text-zinc-500">Gestiona productos y stock</p>
+            <p className="text-xs mt-1">
+              <span className={isAdmin ? 'text-green-400' : 'text-orange-400'}>
+                Rol: {currentUserRole || 'desconocido'} (id_role: {currentUserRoleId ?? 'null'}) {isAdmin ? '- Admin ✅' : '- Trabajador'}
+              </span>
+            </p>
           </div>
           <Button
             onClick={openAddModal}
