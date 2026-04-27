@@ -8,7 +8,7 @@ export default function App() {
     <AppProvider>
       <RouterProvider router={router} />
       <Toaster
-        position="top-right"
+        position="top-center"
         theme="dark"
         toastOptions={{
           style: {

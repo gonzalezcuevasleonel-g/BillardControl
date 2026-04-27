@@ -578,12 +578,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toast.error('Error al actualizar producto: ' + error.message);
       return;
     }
-
-    toast.success('Producto actualizado');
-    setState(prev => ({
-      ...prev,
-      products: prev.products.map(p => p.id === product.id ? product : p),
-    }));
   };
 
   const addProduct = async (product: Omit<Product, 'id'>) => {
@@ -598,12 +592,6 @@ export function AppProvider({ children }: { children: ReactNode }) {
       toast.error('Error al agregar producto: ' + error.message);
       return;
     }
-
-    toast.success('Producto agregado');
-    setState(prev => ({
-      ...prev,
-      products: [...prev.products, dbProductToProduct(data)],
-    }));
   };
 
   const closeDailyCut = (cashDifference: number) => {
