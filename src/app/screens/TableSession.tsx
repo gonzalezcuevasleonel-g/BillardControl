@@ -36,7 +36,7 @@ export function TableSession() {
     endTime: Date;
   } | null>(null);
 
-  const table = tables.find((t) => t.id === tableId);
+  const table = tables.find((t) => t.id === Number(tableId));
 
   const formatTime = (seconds: number) => {
     const hours = Math.floor(seconds / 3600);
@@ -209,7 +209,7 @@ export function TableSession() {
 
   const handleAddProduct = () => {
     if (selectedProduct && quantity > 0) {
-      addProductToTable(table.id, selectedProduct, quantity);
+  addProductToTable(table.id, selectedProduct, quantity);
       setShowProductModal(false);
       setQuantity(1);
       setSelectedProduct(null);
@@ -234,7 +234,7 @@ export function TableSession() {
     });
 
     // 2. End the session
-    endTableSession(table.id);
+  endTableSession(table.id);
   };
 
   const openProductModal = (product: any) => {

@@ -4,7 +4,7 @@ import { supabase, loginUser } from '../../utils/supabase';
 import type { DbProduct, DbTable, DbTableSession, DbSale, DbSaleItem } from '../../utils/supabase';
 
 export interface Product {
-  id: string;
+  id: number;
   name: string;
   price: number;
   stock: number;
@@ -13,34 +13,34 @@ export interface Product {
 }
 
 export interface Table {
-  id: string;
+  id: number;
   name: string;
   hourly_rate: number;
   status: 'available' | 'occupied';
   startTime: number | null;
   elapsedSeconds: number;
   products: CartItem[];
-  sessionId: string | null;
+  sessionId: number | null;
 }
 
 export interface CartItem {
-  productId: string;
+  productId: number;
   name: string;
   price: number;
   quantity: number;
 }
 
 export interface Sale {
-  id: string;
+  id: number;
   timestamp: number;
-  user_id: string;
-  session_id?: string;
+  user_id: number;
+  session_id?: number | null;
   total: number;
   items: CartItem[];
 }
 
 interface UserSession {
-  id_user: string;
+  id_user: number;
   username: string;
   id_rol: number;
 }
@@ -52,7 +52,7 @@ interface AppState {
   dailyEarnings: number;
   isAuthenticated: boolean;
   currentUser: string | null;
-  currentUserId: string | null;
+  currentUserId: number | null;
   currentUserRoleId: number | null;
   isLoading: boolean;
 }
@@ -61,15 +61,15 @@ interface AppContextType extends AppState {
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   register: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  startTableSession: (tableId: string) => Promise<void>;
-  endTableSession: (tableId: string) => Promise<void>;
-  addProductToTable: (tableId: string, product: Product, quantity: number) => void;
+  startTableSession: (tableId: number) => Promise<void>;
+  endTableSession: (tableId: number) => Promise<void>;
+  addProductToTable: (tableId: number, product: Product, quantity: number) => void;
   createPOSSale: (items: CartItem[]) => Promise<void>;
   updateProduct: (product: Product) => Promise<void>;
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
   addTable: (name: string, hourly_rate?: number) => Promise<void>;
-  updateTable: (id: string, newName: string, hourly_rate?: number) => Promise<void>;
-  deleteTable: (id: string) => Promise<void>;
+  updateTable: (id: number, newName: string, hourly_rate?: number) => Promise<void>;
+  deleteTable: (id: number) => Promise<void>;
   closeDailyCut: (cashDifference: number) => void;
 }
 
@@ -110,7 +110,7 @@ function dbSaleToSale(db: DbSale, items: DbSaleItem[] = []): Sale {
     session_id: db.session_id || undefined,
     total: db.total_sale,
     items: items.map(i => ({
-      productId: i.product_id || '',
+      productId: i.product_id ?? 0,
       name: i.product_name,
       price: i.unit_price,
       quantity: i.quantity,
@@ -129,8 +129,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
       dailyEarnings: 0,
       isAuthenticated: !!userSession,
       currentUser: userSession?.username || null,
-      currentUserId: userSession?.id_user || null,
-      currentUserRoleId: userSession?.id_rol || null,
+      currentUserId: userSession ? Number(userSession.id_user) : null,
+      currentUserRoleId: userSession ? Number(userSession.id_rol) : null,
       isLoading: true,
     };
   });
@@ -170,7 +170,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const products = (productsData || []).map(dbProductToProduct);
 
-      const activeSessionsMap = new Map<string, DbTableSession>();
+      const activeSessionsMap = new Map<number, DbTableSession>();
       (sessionsData || []).forEach(s => activeSessionsMap.set(s.table_id, s));
 
       const tables = (tablesData || []).map(t => {
@@ -246,9 +246,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const user = data[0];
 
       const userSession: UserSession = {
-        id_user: user.id_user,
+        id_user: Number(user.id_user),
         username: user.username,
-        id_rol: user.id_rol,
+        id_rol: Number(user.id_rol),
       };
       localStorage.setItem('billarUserSession', JSON.stringify(userSession));
 
@@ -256,8 +256,8 @@ export function AppProvider({ children }: { children: ReactNode }) {
         ...prev,
         isAuthenticated: true,
         currentUser: user.username,
-        currentUserId: user.id_user,
-        currentUserRoleId: user.id_rol,
+        currentUserId: Number(user.id_user),
+        currentUserRoleId: Number(user.id_rol),
       }));
 
       await loadData();
@@ -337,7 +337,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const updateTable = async (id: string, newName: string, newRate?: number) => {
+  const updateTable = async (id: number, newName: string, newRate?: number) => {
     const updates: Partial<DbTable> = { name: newName };
     if (newRate !== undefined) updates.hourly_rate = newRate;
 
@@ -357,7 +357,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const deleteTable = async (id: string) => {
+  const deleteTable = async (id: number) => {
     const table = state.tables.find(t => t.id === id);
     if (table?.status === 'occupied') {
       toast.error('No puedes eliminar una mesa en uso');
@@ -378,7 +378,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const startTableSession = async (tableId: string) => {
+  const startTableSession = async (tableId: number) => {
     const userId = state.currentUserId;
     if (!userId) return;
 
@@ -420,7 +420,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const endTableSession = async (tableId: string) => {
+  const endTableSession = async (tableId: number) => {
     const table = state.tables.find(t => t.id === tableId);
     if (!table || table.status !== 'occupied' || !table.sessionId) return;
 
@@ -490,7 +490,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await loadData();
   };
 
-  const addProductToTable = (tableId: string, product: Product, quantity: number) => {
+  const addProductToTable = (tableId: number, product: Product, quantity: number) => {
     setState(prev => ({
       ...prev,
       tables: prev.tables.map(t => {

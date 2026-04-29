@@ -18,7 +18,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 export type TableStatus = 'available' | 'occupied';
 
 export interface DbUser {
-  id_user: string;
+  id_user: number;
   username: string;
   id_rol: number;
   created_at: string;
@@ -26,7 +26,7 @@ export interface DbUser {
 }
 
 export interface DbProduct {
-  id: string;
+  id: number;
   name: string;
   price: number;
   stock: number;
@@ -36,16 +36,16 @@ export interface DbProduct {
 }
 
 export interface DbTable {
-  id: string;
+  id: number;
   name: string;
   hourly_rate: number;
   status: TableStatus;
 }
 
 export interface DbTableSession {
-  id: string;
-  table_id: string;
-  user_id: string;
+  id: number;
+  table_id: number;
+  user_id: number;
   start_time: string;
   end_time: string | null;
   total_time_price: number;
@@ -53,17 +53,17 @@ export interface DbTableSession {
 }
 
 export interface DbSale {
-  id_sale: string;
-  user_id: string;
-  session_id: string | null;
+  id_sale: number;
+  user_id: number;
+  session_id: number | null;
   total_sale: number;
   created_at: string;
 }
 
 export interface DbSaleItem {
-  id_detail: string;
-  sale_id: string;
-  product_id: string | null;
+  id_detail: number;
+  sale_id: number;
+  product_id: number | null;
   product_name: string;
   unit_price: number;
   quantity: number;
@@ -113,7 +113,7 @@ export async function insertProduct(product: Omit<DbProduct, 'id' | 'updated_at'
   return { data: data as DbProduct | null, error };
 }
 
-export async function updateProduct(id: string, updates: Partial<DbProduct>) {
+export async function updateProduct(id: number, updates: Partial<DbProduct>) {
   const { data, error } = await supabase
     .from('products')
     .update(updates)
@@ -123,7 +123,7 @@ export async function updateProduct(id: string, updates: Partial<DbProduct>) {
   return { data: data as DbProduct | null, error };
 }
 
-export async function deleteProduct(id: string) {
+export async function deleteProduct(id: number) {
   const { error } = await supabase.from('products').delete().eq('id', id);
   return { error };
 }
@@ -146,7 +146,7 @@ export async function insertTable(table: Omit<DbTable, 'id'>) {
   return { data: data as DbTable | null, error };
 }
 
-export async function updateTable(id: string, updates: Partial<DbTable>) {
+export async function updateTable(id: number, updates: Partial<DbTable>) {
   const { data, error } = await supabase
     .from('tables')
     .update(updates)
@@ -156,7 +156,7 @@ export async function updateTable(id: string, updates: Partial<DbTable>) {
   return { data: data as DbTable | null, error };
 }
 
-export async function deleteTable(id: string) {
+export async function deleteTable(id: number) {
   const { error } = await supabase.from('tables').delete().eq('id', id);
   return { error };
 }
@@ -179,7 +179,7 @@ export async function insertTableSession(session: Omit<DbTableSession, 'id' | 's
   return { data: data as DbTableSession | null, error };
 }
 
-export async function updateTableSession(id: string, updates: Partial<DbTableSession>) {
+export async function updateTableSession(id: number, updates: Partial<DbTableSession>) {
   const { data, error } = await supabase
     .from('table_sessions')
     .update(updates)

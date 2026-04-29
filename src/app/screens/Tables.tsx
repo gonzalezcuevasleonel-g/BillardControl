@@ -29,11 +29,11 @@ export function Tables() {
       .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleStartSession = (tableId: string) => {
+  const handleStartSession = (tableId: number) => {
     startTableSession(tableId);
   };
 
-  const handleManageSession = (tableId: string) => {
+  const handleManageSession = (tableId: number) => {
     navigate(`/tables/${tableId}`);
   };
 
@@ -172,7 +172,7 @@ export function Tables() {
                     </Button>
                   ) : (
                     <Button
-                      onClick={() => handleManageSession(table.id)}
+  onClick={() => handleManageSession(table.id)}
                       className="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold shadow-lg shadow-purple-500/30"
                     >
                       <Square className="w-4 h-4 mr-2" />
