@@ -356,7 +356,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       ),
     }));
   };
-
+  //Arreglado el error de eliminar las mesas
   const deleteTable = async (id: number) => {
     const table = state.tables.find(t => t.id === id);
     if (table?.status === 'occupied') {
