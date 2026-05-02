@@ -594,13 +594,41 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const closeDailyCut = (cashDifference: number) => {
-    console.log('Corte:', cashDifference);
+  const closeDailyCut = async (cashDifference: number) => {
+  try {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    // Obtener IDs de las ventas del día
+    const todaySales = state.sales.filter(s => {
+      const saleDate = new Date(s.timestamp);
+      saleDate.setHours(0, 0, 0, 0);
+      return saleDate.getTime() === today.getTime();
+    });
+
+    const saleIds = todaySales.map(s => s.id);
+
+    if (saleIds.length > 0) {
+      // Eliminar sale_items del día
+      await supabase.from('sale_items').delete().in('sale_id', saleIds);
+
+      // Eliminar sales del día
+      await supabase.from('sales').delete().in('id_sale', saleIds);
+    }
+
+    // Reiniciar el estado
     setState(prev => ({
       ...prev,
+      sales: [],
       dailyEarnings: 0,
     }));
-  };
+
+    console.log('Corte cerrado. Diferencia de efectivo:', cashDifference);
+  } catch (err: any) {
+    console.error('Error al cerrar corte:', err);
+    toast.error('Error al cerrar corte: ' + (err.message || 'Desconocido'));
+  }
+};
 
   return (
     <AppContext.Provider
