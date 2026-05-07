@@ -164,8 +164,8 @@ export function TableSession() {
 
             {/* Footer */}
             <div className="px-6 pb-6">
-              <Button 
-                onClick={()=> window.print}
+            <Button
+                onClick={() => window.print()}
                 variant="outline"
                 className="w-full mb-3 bg-green-500 hover:bg-green-600 text-black font-bold text-base py-6"
                 >
@@ -209,7 +209,7 @@ export function TableSession() {
 
   const handleAddProduct = () => {
     if (selectedProduct && quantity > 0) {
-  addProductToTable(table.id, selectedProduct, quantity);
+      addProductToTable(table.id, selectedProduct, quantity);
       setShowProductModal(false);
       setQuantity(1);
       setSelectedProduct(null);

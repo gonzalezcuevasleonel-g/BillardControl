@@ -172,7 +172,7 @@ export function Tables() {
                     </Button>
                   ) : (
                     <Button
-  onClick={() => handleManageSession(table.id)}
+                      onClick={() => handleManageSession(table.id)}
                       className="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold shadow-lg shadow-purple-500/30"
                     >
                       <Square className="w-4 h-4 mr-2" />

@@ -102,7 +102,7 @@ function dbTableToTable(db: DbTable, session?: DbTableSession): Table {
   };
 }
 
-function dbSaleToSale(db: DbSale, items: DbSaleItem[] = []): Sale {
+function dbSaleToSale(db: DbSale, items: DbSaleItem[] = [], tableSession?: any, table?: any): Sale {
   return {
     id: db.id_sale,
     timestamp: new Date(db.created_at).getTime(),
@@ -115,7 +115,10 @@ function dbSaleToSale(db: DbSale, items: DbSaleItem[] = []): Sale {
       price: i.unit_price,
       quantity: i.quantity,
     })),
-  };
+
+    // Extra fields used by Dashboard receipt (kept loose to avoid changing Sale interface)
+    ...(tableSession ? { table_session: tableSession, table: table } : {}),
+  } as any;
 }
 
 export function AppProvider({ children }: { children: ReactNode }) {
@@ -159,12 +162,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (sessionsError) throw sessionsError;
 
       const { data: salesData, error: salesError } = await supabase
-        .from('sales')
-        .select(`
-          *,
-          sale_items (*)
-        `)
-        .order('created_at', { ascending: false });
+      .from('sales')
+      .select(`
+        *,
+        table_session:table_sessions (
+          id,
+          start_time,
+          end_time,
+          total_time_price,
+          table:tables (
+            id,
+            name,
+            hourly_rate
+          )
+        )
+      `).order('created_at', { ascending: false });
 
       if (salesError) throw salesError;
 
@@ -238,10 +250,17 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const login = async (username: string, password: string): Promise<boolean> => {
     try {
       const { data, error } = await loginUser(username, password);
-      if (error || !data || data.length === 0) {
+      if (error) {
         console.error('Login error:', error);
+        toast.error('Error login (DB): ' + error.message);
         return false;
       }
+      if (!data || data.length === 0) {
+        console.error('Login error: no data for user');
+        toast.error('Usuario o contraseña incorrectos');
+        return false;
+      }
+
 
       const user = data[0];
 
