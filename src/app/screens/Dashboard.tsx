@@ -321,165 +321,199 @@ function TicketReceipt({
   sale: Sale;
   onClose: () => void;
 }) {
+  // Supabase query in AppContext returns `table_session` nested when it's a mesa sale.
   const session = (sale as any).table_session as any | undefined;
   const table = session?.table as any | undefined;
 
+  const hasTableSession = Boolean(session?.id) || Boolean(sale.session_id);
+
   const startMs = session?.start_time ? new Date(session.start_time).getTime() : null;
   const endMs = session?.end_time ? new Date(session.end_time).getTime() : null;
-  const elapsedSeconds = startMs && endMs ? Math.max(0, Math.floor((endMs - startMs) / 1000)) : null;
+  const elapsedSeconds =
+    hasTableSession && startMs && endMs ? Math.max(0, Math.floor((endMs - startMs) / 1000)) : null;
 
-  const products = (sale.items || []).map((i) => ({ name: i.name, price: i.price, quantity: i.quantity }));
-  const productsCost = products.reduce((sum, p) => sum + p.price * p.quantity, 0);
+  const itemsFromSale = (sale as any).sale_items || (sale as any).items || [];
+  const products = itemsFromSale.map((i: any) => ({
+    name: String(i.product_name || 'Producto'),
+    price: Number(i.unit_price || 0),
+    quantity: Number(i.quantity || 0),
+  }));
 
-  const hourlyRate: number | null = typeof table?.hourly_rate === 'number' ? table.hourly_rate : null;
-  const tableCost: number | null =
-    typeof session?.total_time_price === 'number'
-      ? session.total_time_price
-      : elapsedSeconds !== null && typeof table?.hourly_rate === 'number'
-        ? (elapsedSeconds / 3600) * table.hourly_rate
-        : null;
+  const productsCost = products.reduce((sum: number, i) => sum + i.price * i.quantity, 0);
 
-  const tableName = table?.name ? table.name : 'Venta Directa';
+  const hourlyRate: number | null = hasTableSession
+    ? typeof table?.hourly_rate === 'number'
+      ? table.hourly_rate
+      : null
+    : null;
+
+  const tableCost: number | null = (() => {
+    if (!hasTableSession) return null;
+
+    // Prefer DB-calculated value when available
+    if (typeof session?.total_time_price === 'number') return session.total_time_price;
+
+    // Fallback: compute from elapsed and hourly rate
+    if (elapsedSeconds !== null && hourlyRate !== null) return (elapsedSeconds / 3600) * hourlyRate;
+
+    return null;
+  })();
+
+  const tableName = hasTableSession && table?.name ? table.name : 'Mesa';
   const totalCost = typeof sale.total === 'number' ? sale.total : 0;
 
   const { time, date } = formatDateTimePair(sale.timestamp);
 
   return (
-    <>
-      <div id="dashboard-ticket" className="max-w-md">
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-5"
-        >
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-white/20 rounded-full">
-              <CheckCircle className="w-6 h-6 text-white" />
-            </div>
-            <div>
-              <h2 className="text-xl font-bold text-white">Sesión Finalizada</h2>
-              <p className="text-green-100 text-sm">
-                {time} {' — '} {date}
-              </p>
-            </div>
+    <div id="dashboard-ticket" className="max-w-md">
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-5"
+      >
+        <div className="flex items-center gap-3">
+          <div className="p-2 bg-white/20 rounded-full">
+            <CheckCircle className="w-6 h-6 text-white" />
           </div>
-        </motion.div>
-
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 0.15 }}
-          className="px-6 py-5 space-y-5"
-        >
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-zinc-400 text-xs uppercase tracking-widest">Mesa</p>
-              <p className="text-white text-2xl font-bold">{tableName}</p>
-            </div>
-            <div className="text-right">
-              <p className="text-zinc-400 text-xs uppercase tracking-widest">Tarifa</p>
-              <p className="text-zinc-300 font-semibold">
-                {hourlyRate !== null ? `$${hourlyRate}/hr` : '--'}
-              </p>
-            </div>
+          <div>
+            <h2 className="text-xl font-bold text-white">Sesión Finalizada</h2>
+            <p className="text-green-100 text-sm">
+              {time} {' — '} {date}
+            </p>
           </div>
+        </div>
+      </motion.div>
 
-          <div className="border-t border-dashed border-zinc-700" />
-
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-2">
-              <Clock className="w-4 h-4 text-green-400" />
-              <span className="text-zinc-300 text-sm">Tiempo total</span>
-            </div>
-            <div className="text-right">
-              <span className="text-white font-mono font-bold">
-                {elapsedSeconds !== null ? formatTime(elapsedSeconds) : '--:--:--'}
-              </span>
-              <p className="text-zinc-500 text-xs">
-                {hourlyRate !== null && tableCost !== null
-                  ? `$${hourlyRate}/hr → $${tableCost.toFixed(2)}`
-                  : '-- → --'}
-              </p>
-            </div>
+      <motion.div
+        initial={{ opacity: 0 }}
+        animate={{ opacity: 1 }}
+        transition={{ delay: 0.15 }}
+        className="px-6 py-5 space-y-5"
+      >
+        {/* Tipo de venta */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-zinc-400 text-xs uppercase tracking-widest">Tipo de venta</p>
+            <p className="text-white text-lg font-bold">
+              {hasTableSession ? 'Venta de mesa' : 'Venta directa'}
+            </p>
           </div>
-
-          {products.length > 0 && (
-            <>
-              <div className="border-t border-dashed border-zinc-700" />
-              <div>
-                <p className="text-zinc-400 text-xs uppercase tracking-widest mb-3">
-                  Productos consumidos
-                </p>
-                <div className="space-y-2">
-                  {products.map((item, idx) => (
-                    <motion.div
-                      key={idx}
-                      initial={{ opacity: 0, x: -10 }}
-                      animate={{ opacity: 1, x: 0 }}
-                      transition={{ delay: 0.2 + idx * 0.05 }}
-                      className="flex items-center justify-between"
-                    >
-                      <div className="flex items-center gap-2">
-                        <span className="text-zinc-500 text-sm tabular-nums w-5 text-right">
-                          {item.quantity}×
-                        </span>
-                        <span className="text-zinc-300 text-sm">{item.name}</span>
-                      </div>
-                      <span className="text-white text-sm font-medium">
-                        ${(item.price * item.quantity).toFixed(2)}
-                      </span>
-                    </motion.div>
-                  ))}
-                </div>
-              </div>
-            </>
-          )}
-
-          <div className="border-t border-dashed border-zinc-700" />
-
-          <div className="space-y-1.5">
-            <div className="flex justify-between text-sm">
-              <span className="text-zinc-400">Tiempo de mesa</span>
-              <span className="text-zinc-300">{tableCost !== null ? `$${tableCost.toFixed(2)}` : '--'}</span>
-            </div>
-            {productsCost > 0 && (
-              <div className="flex justify-between text-sm">
-                <span className="text-zinc-400">Productos</span>
-                <span className="text-zinc-300">${productsCost.toFixed(2)}</span>
-              </div>
-            )}
+          <div className="text-right">
+            <p className="text-zinc-400 text-xs uppercase tracking-widest">Tarifa</p>
+            <p className="text-zinc-300 font-semibold">
+              {hasTableSession && hourlyRate !== null ? `$${hourlyRate}/hr` : '--'}
+            </p>
           </div>
-
-          <div className="bg-gradient-to-r from-purple-500/10 to-purple-600/10 border border-purple-500/30 rounded-xl p-4 flex items-center justify-between">
-            <span className="text-white font-bold text-lg">TOTAL</span>
-            <span className="text-3xl font-bold text-purple-400">${totalCost.toFixed(2)}</span>
-          </div>
-        </motion.div>
-
-        <div className="px-6 pb-6 no-print">
-          <Button
-            onClick={() => window.print()}
-            variant="outline"
-            className="w-full mb-3 bg-green-500 hover:bg-green-600 text-black font-bold text-base py-6"
-          >
-            <Printer className="w-5 h-5 mr-2" />
-            Imprimir Ticket
-          </Button>
-          <Button onClick={onClose} className="w-full bg-green-500 hover:bg-green-600 text-black font-bold text-base py-6">
-            <Receipt className="w-5 h-5 mr-2" />
-            Cerrar
-          </Button>
         </div>
 
-        <style>{`
-          @media print {
-            .no-print { display: none !important; }
-            #dashboard-ticket { page-break-inside: avoid; }
-            html, body { margin: 0 !important; padding: 0 !important; }
-          }
-        `}</style>
+        {/* Mesa info */}
+        <div className="flex items-center justify-between">
+          <div>
+            <p className="text-zinc-400 text-xs uppercase tracking-widest">Mesa</p>
+            <p className="text-white text-2xl font-bold">
+              {hasTableSession ? tableName : 'Venta Directa'}
+            </p>
+          </div>
+          <div />
+        </div>
+
+        <div className="border-t border-dashed border-zinc-700" />
+
+        {/* Time */}
+        <div className="flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-green-400" />
+            <span className="text-zinc-300 text-sm">Tiempo total</span>
+          </div>
+          <div className="text-right">
+            <span className="text-white font-mono font-bold">
+              {hasTableSession && elapsedSeconds !== null ? formatTime(elapsedSeconds) : '--:--:--'}
+            </span>
+            <p className="text-zinc-500 text-xs">
+              {hasTableSession && hourlyRate !== null && tableCost !== null
+                ? `$${hourlyRate}/hr → $${tableCost.toFixed(2)}`
+                : '-- → --'}
+            </p>
+          </div>
+        </div>
+
+        {/* Products */}
+        {products.length > 0 && (
+          <>
+            <div className="border-t border-dashed border-zinc-700" />
+            <div>
+              <p className="text-zinc-400 text-xs uppercase tracking-widest mb-3">Productos consumidos</p>
+              <div className="space-y-2">
+                {products.map((item, idx) => (
+                  <motion.div
+                    key={idx}
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    transition={{ delay: 0.2 + idx * 0.05 }}
+                    className="flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-2">
+                      <span className="text-zinc-500 text-sm tabular-nums w-5 text-right">{item.quantity}×</span>
+                      <span className="text-zinc-300 text-sm">{item.name}</span>
+                    </div>
+                    <span className="text-white text-sm font-medium">${(item.price * item.quantity).toFixed(2)}</span>
+                  </motion.div>
+                ))}
+              </div>
+            </div>
+          </>
+        )}
+
+        <div className="border-t border-dashed border-zinc-700" />
+
+        {/* Subtotals */}
+        <div className="space-y-1.5">
+          <div className="flex justify-between text-sm">
+            <span className="text-zinc-400">Tiempo de mesa</span>
+            <span className="text-zinc-300">{tableCost !== null ? `$${tableCost.toFixed(2)}` : '--'}</span>
+          </div>
+          {productsCost > 0 && (
+            <div className="flex justify-between text-sm">
+              <span className="text-zinc-400">Productos</span>
+              <span className="text-zinc-300">${productsCost.toFixed(2)}</span>
+            </div>
+          )}
+        </div>
+
+        {/* Total */}
+        <div className="bg-gradient-to-r from-purple-500/10 to-purple-600/10 border border-purple-500/30 rounded-xl p-4 flex items-center justify-between">
+          <span className="text-white font-bold text-lg">TOTAL</span>
+          <span className="text-3xl font-bold text-purple-400">${totalCost.toFixed(2)}</span>
+        </div>
+      </motion.div>
+
+      <div className="px-6 pb-6 no-print">
+        <Button
+          onClick={() => window.print()}
+          variant="outline"
+          className="w-full mb-3 bg-green-500 hover:bg-green-600 text-black font-bold text-base py-6"
+        >
+          <Printer className="w-5 h-5 mr-2" />
+          Imprimir Ticket
+        </Button>
+        <Button
+          onClick={onClose}
+          className="w-full bg-green-500 hover:bg-green-600 text-black font-bold text-base py-6"
+        >
+          <Receipt className="w-5 h-5 mr-2" />
+          Cerrar
+        </Button>
       </div>
-    </>
+
+      <style>{`
+        @media print {
+          .no-print { display: none !important; }
+          #dashboard-ticket { page-break-inside: avoid; }
+          html, body { margin: 0 !important; padding: 0 !important; }
+        }
+      `}</style>
+    </div>
   );
 }
+
 
