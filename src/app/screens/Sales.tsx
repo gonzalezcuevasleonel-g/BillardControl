@@ -182,7 +182,7 @@ export function Sales() {
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
-              className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 shadow-xl sticky top-6"
+              className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 shadow-xl lg:sticky top-6 z-20"
             >
               <div className="flex items-center gap-2 mb-6">
                 <ShoppingCart className="w-6 h-6 text-purple-400" />
@@ -287,7 +287,7 @@ export function Sales() {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: 0.2 }}
-              className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 shadow-xl"
+              className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 shadow-xl relative z-10"
             >
               <div className="flex items-center justify-between mb-6">
                 <div className="flex items-center gap-2">
@@ -331,14 +331,30 @@ export function Sales() {
                             ${sale.total.toFixed(2)}
                           </p>
                           <button
-                            onClick={() => setSelectedSale({
-                              folio: sale.id,
-                              items: sale.items,
-                              productsCost: sale.total,
-                              totalCost: sale.total,
-                              endTime: sale.timestamp,
-                              customerName: sale.customer_name || (sale.session_id ? 'Venta de Mesa' : 'Venta Directa')
-                            })}
+                            onClick={() => {
+                              const tableCost = sale.total_time_price || 0;
+                              const productsCost = sale.total - tableCost;
+                              
+                              let usageTime = undefined;
+                              if (sale.start_time && sale.end_time) {
+                                const diff = Math.floor((new Date(sale.end_time).getTime() - new Date(sale.start_time).getTime()) / 1000);
+                                const h = Math.floor(diff / 3600);
+                                const m = Math.floor((diff % 3600) / 60);
+                                const s = diff % 60;
+                                usageTime = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                              }
+
+                              setSelectedSale({
+                                folio: sale.id,
+                                items: sale.items,
+                                tableCost: sale.session_id ? tableCost : undefined,
+                                productsCost: productsCost,
+                                totalCost: sale.total,
+                                endTime: sale.timestamp,
+                                usageTime: usageTime,
+                                customerName: sale.customer_name || (sale.session_id ? (sale.table_name || 'Venta de Mesa') : 'Venta Directa')
+                              });
+                            }}
                             className="p-1.5 hover:bg-zinc-700 rounded text-zinc-500 hover:text-green-400 transition-all"
                             title="Imprimir"
                           >

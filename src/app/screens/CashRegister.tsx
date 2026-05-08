@@ -24,19 +24,19 @@ import {
 import { toast } from 'sonner';
 
 export function CashRegister() {
-  const { sales, dailyEarnings, closeDailyCut } = useApp();
+  const { todaySales, dailyEarnings, closeDailyCut } = useApp();
 
   const [showCloseModal, setShowCloseModal] = useState(false);
   const [cashDifference, setCashDifference] = useState('');
   const [showExportOptions, setShowExportOptions] = useState(false);
 
-  const tableSales = sales.filter((s) => s.session_id);
-  const posSales = sales.filter((s) => !s.session_id);
+  const tableSales = todaySales.filter((s) => s.session_id);
+  const posSales = todaySales.filter((s) => !s.session_id);
 
   const tableEarnings = tableSales.reduce((sum, sale) => sum + sale.total, 0);
   const posEarnings = posSales.reduce((sum, sale) => sum + sale.total, 0);
 
-  const totalProductsSold = sales.reduce(
+  const totalProductsSold = todaySales.reduce(
     (sum, sale) => sum + sale.items.reduce((s, item) => s + item.quantity, 0),
     0
   );
@@ -77,7 +77,7 @@ export function CashRegister() {
     const csvHeader = 'Fecha,Tipo,Productos,Total\r\n';
     let csvContent = excelMagic + csvHeader;
 
-    sales.forEach(sale => {
+    todaySales.forEach(sale => {
       const typeLabel = sale.session_id ? 'Mesa' : 'Venta Directa';
       const productsStr = sale.items.map(item => `${item.quantity}x ${item.name}`).join(' - ');
       
@@ -93,7 +93,7 @@ export function CashRegister() {
     const csvHeader = 'Detalle,Cantidad,Precio,Subtotal\r\n';
     let csvContent = excelMagic + csvHeader;
 
-    sales.forEach(sale => {
+    todaySales.forEach(sale => {
       const typeLabel = sale.session_id ? 'Venta de Mesa' : 'Venta Directa';
       
       // Encabezado de la venta
@@ -215,7 +215,7 @@ export function CashRegister() {
         </Dialog>
             <Button
               onClick={() => setShowCloseModal(true)}
-              disabled={sales.length === 0}
+              disabled={todaySales.length === 0}
               className="bg-red-500 hover:bg-red-600 text-white font-semibold shadow-lg shadow-red-500/30"
             >
               <AlertCircle className="w-4 h-4 mr-2" />
@@ -268,12 +268,12 @@ export function CashRegister() {
             <Download className="w-5 h-5 text-blue-400" />
             Historial Completo del Día
           </h2>
-          {sales.length === 0 ? (
+          {todaySales.length === 0 ? (
             <p className="text-zinc-500 text-center py-12 text-sm">
               No hay ventas registradas hoy
             </p>
           ) : (
-            sales.map((sale) => (
+            todaySales.map((sale) => (
               <motion.div
                 key={sale.id}
                 initial={{ opacity: 0, x: -10 }}
