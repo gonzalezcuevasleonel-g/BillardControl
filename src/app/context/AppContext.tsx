@@ -666,6 +666,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
   };
 
   const closeDailyCut = (cashDifference: number) => {
+    try {
     console.log('Corte:', cashDifference);
     setState(prev => ({
       ...prev,
