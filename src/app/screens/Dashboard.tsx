@@ -10,6 +10,7 @@ import {
   Printer,
 } from 'lucide-react';
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { useApp, Sale } from '../context/AppContext';
 import { Layout } from '../components/Layout';
 import {
@@ -19,6 +20,7 @@ import {
 import { Button } from '../components/ui/button';
 
 export function Dashboard() {
+  const navigate = useNavigate();
   const { tables, dailyEarnings, sales, products } = useApp();
   const [selectedReceipt, setSelectedReceipt] = useState<Sale | null>(null);
 
@@ -150,10 +152,19 @@ export function Dashboard() {
             transition={{ delay: 0.4 }}
             className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 shadow-xl"
           >
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-              <TableProperties className="w-5 h-5 text-green-400" />
-              Estado de Mesas
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <TableProperties className="w-5 h-5 text-green-400" />
+                Estado de Mesas
+              </h2>
+              <button
+                onClick={() => navigate('/tables')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-sm font-medium hover:bg-green-500/20 hover:border-green-500/50 transition-all"
+              >
+                <TableProperties className="w-4 h-4" />
+                Ir a mesas
+              </button>
+            </div>
 
             <div className="grid grid-cols-4 gap-3">
               {tables.map((table) => (
@@ -163,10 +174,9 @@ export function Dashboard() {
                   className={`
                     aspect-square rounded-lg border-2 flex flex-col items-center justify-center
                     transition-all relative overflow-hidden
-                    ${
-                      table.status === 'occupied'
-                        ? 'bg-green-500/10 border-green-500/50 shadow-lg shadow-green-500/20'
-                        : 'bg-zinc-800 border-zinc-700'
+                    ${table.status === 'occupied'
+                      ? 'bg-green-500/10 border-green-500/50 shadow-lg shadow-green-500/20'
+                      : 'bg-zinc-800 border-zinc-700'
                     }
                   `}
                 >
@@ -184,21 +194,18 @@ export function Dashboard() {
                     />
                   )}
                   <Circle
-                    className={`w-6 h-6 mb-1 relative z-10 ${
-                      table.status === 'occupied' ? 'text-green-400' : 'text-zinc-600'
-                    }`}
+                    className={`w-6 h-6 mb-1 relative z-10 ${table.status === 'occupied' ? 'text-green-400' : 'text-zinc-600'
+                      }`}
                   />
                   <p
-                    className={`text-xs font-medium relative z-10 ${
-                      table.status === 'occupied' ? 'text-white' : 'text-zinc-500'
-                    }`}
+                    className={`text-xs font-medium relative z-10 ${table.status === 'occupied' ? 'text-white' : 'text-zinc-500'
+                      }`}
                   >
                     {table.name}
                   </p>
                   <p
-                    className={`text-[10px] relative z-10 ${
-                      table.status === 'occupied' ? 'text-green-300' : 'text-zinc-600'
-                    }`}
+                    className={`text-[10px] relative z-10 ${table.status === 'occupied' ? 'text-green-300' : 'text-zinc-600'
+                      }`}
                   >
                     {getTableType(table.hourly_rate)}
                   </p>

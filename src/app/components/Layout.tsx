@@ -10,6 +10,7 @@ import {
   LogOut,
   Menu,
   X,
+  Users,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
@@ -24,12 +25,24 @@ const navItems = [
   { path: '/sales', label: 'Ventas', icon: ShoppingCart },
   { path: '/inventory', label: 'Inventario', icon: Package },
   { path: '/cash-register', label: 'Caja', icon: Calculator },
+
 ];
 
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout, currentUser } = useApp();
+  const { logout, currentUser, currentUserRoleId } = useApp();
+
+  const getRoleLabel = (roleId: number | null) => {
+    switch (roleId) {
+      case 1:
+        return 'Administrador';
+      case 2:
+        return 'Empleado';
+      default:
+        return 'Usuario';
+    }
+  };
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
@@ -61,10 +74,9 @@ export function Layout({ children }: LayoutProps) {
                   whileTap={{ scale: 0.98 }}
                   className={`
                     flex items-center gap-3 px-4 py-3 rounded-lg transition-all
-                    ${
-                      isActive
-                        ? 'bg-green-500/20 text-green-400 shadow-lg shadow-green-500/20'
-                        : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                    ${isActive
+                      ? 'bg-green-500/20 text-green-400 shadow-lg shadow-green-500/20'
+                      : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
                     }
                   `}
                 >
@@ -74,6 +86,25 @@ export function Layout({ children }: LayoutProps) {
               </Link>
             );
           })}
+
+          {currentUserRoleId === 1 && (
+            <Link to="/users">
+              <motion.div
+                whileHover={{ scale: 1.02, x: 4 }}
+                whileTap={{ scale: 0.98 }}
+                className={`
+                  flex items-center gap-3 px-4 py-3 rounded-lg transition-all
+                  ${location.pathname === '/users'
+                    ? 'bg-green-500/20 text-green-400 shadow-lg shadow-green-500/20'
+                    : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                  }
+                `}
+              >
+                <Users className="w-5 h-5" />
+                <span className="font-medium">Usuarios</span>
+              </motion.div>
+            </Link>
+          )}
         </nav>
 
         {/* User & Logout */}
@@ -81,7 +112,7 @@ export function Layout({ children }: LayoutProps) {
           <div className="flex items-center justify-between px-4 py-3 bg-zinc-800 rounded-lg">
             <div>
               <p className="text-sm font-medium text-white">{currentUser}</p>
-              <p className="text-xs text-zinc-500">Administrador</p>
+              <p className="text-xs text-zinc-500">{getRoleLabel(currentUserRoleId)}</p>
             </div>
             <button
               onClick={handleLogout}
@@ -127,10 +158,9 @@ export function Layout({ children }: LayoutProps) {
                     <div
                       className={`
                         flex items-center gap-3 px-4 py-3 rounded-lg
-                        ${
-                          isActive
-                            ? 'bg-green-500/20 text-green-400'
-                            : 'text-zinc-400 hover:bg-zinc-800'
+                        ${isActive
+                          ? 'bg-green-500/20 text-green-400'
+                          : 'text-zinc-400 hover:bg-zinc-800'
                         }
                       `}
                     >
@@ -140,6 +170,25 @@ export function Layout({ children }: LayoutProps) {
                   </Link>
                 );
               })}
+              {currentUserRoleId === 1 && (
+                <Link
+                  to="/users"
+                  onClick={() => setMobileMenuOpen(false)}
+                >
+                  <div
+                    className={`
+                      flex items-center gap-3 px-4 py-3 rounded-lg
+                      ${location.pathname === '/users'
+                        ? 'bg-green-500/20 text-green-400'
+                        : 'text-zinc-400 hover:bg-zinc-800'
+                      }
+                    `}
+                  >
+                    <Users className="w-5 h-5" />
+                    <span>Usuarios</span>
+                  </div>
+                </Link>
+              )}
             </nav>
             <div className="p-4 border-t border-zinc-800">
               <button

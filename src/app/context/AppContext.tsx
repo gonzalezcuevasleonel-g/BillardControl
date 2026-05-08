@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { toast } from 'sonner';
 import { supabase, loginUser } from '../../utils/supabase';
-import type { DbProduct, DbTable, DbTableSession, DbSale, DbSaleItem } from '../../utils/supabase';
+import type { DbProduct, DbTable, DbTableSession, DbSale, DbSaleItem, DbUser } from '../../utils/supabase';
 
 export interface Product {
   id: number;
@@ -71,6 +71,10 @@ interface AppContextType extends AppState {
   updateTable: (id: number, newName: string, hourly_rate?: number) => Promise<void>;
   deleteTable: (id: number) => Promise<void>;
   closeDailyCut: (cashDifference: number) => void;
+  fetchUsers: () => Promise<DbUser[]>;
+  deleteUser: (id_user: number) => Promise<void>;
+  updateUserRole: (id_user: number, id_rol: number) => Promise<void>;
+  updateUserPassword: (id_user: number, newPassword: string) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -619,6 +623,42 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updateTable,
         deleteTable,
         closeDailyCut,
+        fetchUsers: async () => {
+          const { data, error } = await supabase.from('users').select('*').order('username');
+          if (error) {
+            console.error('Error fetching users:', error);
+            toast.error('Error al cargar usuarios');
+            return [];
+          }
+          return data as DbUser[];
+        },
+        deleteUser: async (id_user: number) => {
+          const { error } = await supabase.from('users').delete().eq('id_user', id_user);
+          if (error) {
+            console.error('Error deleting user:', error);
+            toast.error('Error al eliminar usuario');
+            return;
+          }
+          toast.success('Usuario eliminado');
+        },
+        updateUserRole: async (id_user: number, id_rol: number) => {
+          const { error } = await supabase.from('users').update({ id_rol }).eq('id_user', id_user);
+          if (error) {
+            console.error('Error updating user role:', error);
+            toast.error('Error al actualizar rol');
+            return;
+          }
+          toast.success('Rol actualizado');
+        },
+        updateUserPassword: async (id_user: number, newPassword: string) => {
+          const { error } = await supabase.from('users').update({ password: newPassword }).eq('id_user', id_user);
+          if (error) {
+            console.error('Error updating password:', error);
+            toast.error('Error al actualizar contraseña');
+            return;
+          }
+          toast.success('Contraseña actualizada correctamente');
+        },
       }}
     >
       {children}

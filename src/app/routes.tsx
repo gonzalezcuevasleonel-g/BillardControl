@@ -6,7 +6,8 @@ import { TableSession } from './screens/TableSession';
 import { Sales } from './screens/Sales';
 import { Inventory } from './screens/Inventory';
 import { CashRegister } from './screens/CashRegister';
-import { TablesEdit } from './screens/TablesEdit'; // 👈 NUEVO
+import { TablesEdit } from './screens/TablesEdit';
+import { Users } from './screens/Users';
 import { useApp } from './context/AppContext';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -91,6 +92,14 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <CashRegister />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/users',
+    element: (
+      <ProtectedRoute>
+        <Users />
       </ProtectedRoute>
     ),
   },

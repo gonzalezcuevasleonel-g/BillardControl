@@ -21,7 +21,7 @@ export function TablesEdit() {
 
   const [newName, setNewName] = useState("");
   const [newType, setNewType] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
   const [editType, setEditType] = useState("");
 
@@ -34,7 +34,7 @@ export function TablesEdit() {
     setNewType("");
   };
 
-  const handleUpdate = (id: string) => {
+  const handleUpdate = (id: number) => {
     if (!editName.trim() || !editType) return;
     const selected = TABLE_TYPES.find((t) => t.label === editType);
     if (!selected) return;

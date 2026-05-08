@@ -135,7 +135,7 @@ export function Login() {
                   />
                 </div>
               </div>
-                
+
 
               <div>
                 <label className="block text-sm font-medium text-zinc-400 mb-2">
@@ -152,30 +152,8 @@ export function Login() {
                     required
                   />
                 </div>
-                </div>
+              </div>
 
-              {isRegister && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                >
-                  <label className="block text-sm font-medium text-zinc-400 mb-2">
-                    Confirmar Contraseña
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
-                    <Input
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="pl-10 bg-zinc-800 border-zinc-700 text-white focus:border-green-500 focus:ring-green-500/20"
-                      placeholder="Confirma tu contraseña"
-                      required
-                    />
-                  </div>
-                </motion.div>
-              )}
 
               {error && (
                 <motion.div
@@ -194,8 +172,6 @@ export function Login() {
               >
                 {isLoading
                   ? 'Procesando...'
-                  : isRegister
-                  ? 'Registrarse'
                   : 'Iniciar Sesión'}
               </Button>
             </form>
@@ -209,12 +185,10 @@ export function Login() {
                 }}
                 className="text-sm text-zinc-400 hover:text-green-400 transition-colors"
               >
-                {isRegister
-                  ? '¿Ya tienes cuenta? Inicia sesión'
-                  : '¿No tienes cuenta? Regístrate'}
+
               </button>
             </div>
-            </div>
+          </div>
         </div>
       </motion.div>
     </div>
