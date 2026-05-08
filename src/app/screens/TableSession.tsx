@@ -11,6 +11,7 @@ import {
   CheckCircle,
   Printer,
   Trash2,
+  User,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Layout } from '../components/Layout';
@@ -35,6 +36,7 @@ export function TableSession() {
     productsCost: number;
     totalCost: number;
     endTime: Date;
+    customerName: string;
   } | null>(null);
 
   const table = tables.find((t) => t.id === Number(tableId));
@@ -54,7 +56,7 @@ export function TableSession() {
       <Layout>
         <Dialog open={true} onOpenChange={() => navigate('/tables')}>
           <DialogContent
-            className="bg-zinc-950 border-zinc-800 max-w-md w-full p-0 overflow-hidden"
+            className="bg-zinc-950 border-zinc-800 max-w-md w-full p-0 overflow-hidden print:bg-white print:text-black print:border-none"
             onPointerDownOutside={(e) => e.preventDefault()}
           >
             {/* Header */}
@@ -63,18 +65,17 @@ export function TableSession() {
               animate={{ opacity: 1, y: 0 }}
               className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-5"
             >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/20 rounded-full">
-                  <CheckCircle className="w-6 h-6 text-white" />
+              <div className="flex flex-col gap-1">
+                <h2 className="text-xl font-bold text-white">Sesión Finalizada</h2>
+                <div className="flex items-center gap-2 text-green-100 text-sm">
+                  <User className="w-4 h-4" />
+                  <span className="font-semibold">{receipt.customerName}</span>
                 </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">Sesión Finalizada</h2>
-                  <p className="text-green-100 text-sm">
-                    {receipt.endTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
-                    {' — '}
-                    {receipt.endTime.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
-                  </p>
-                </div>
+                <p className="text-green-100/80 text-xs">
+                  {receipt.endTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
+                  {' — '}
+                  {receipt.endTime.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
+                </p>
               </div>
             </motion.div>
 
@@ -166,7 +167,7 @@ export function TableSession() {
             {/* Footer */}
             <div className="px-6 pb-6">
               <Button 
-                onClick={()=> window.print}
+                onClick={() => window.print()}
                 variant="outline"
                 className="w-full mb-3 bg-green-500 hover:bg-green-600 text-black font-bold text-base py-6"
                 >
@@ -232,6 +233,7 @@ export function TableSession() {
       productsCost: pCost,
       totalCost: tCost + pCost,
       endTime: new Date(),
+      customerName: table.customerName || "Cliente",
     });
 
     // 2. End the session
@@ -258,8 +260,14 @@ export function TableSession() {
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-white">{table.name}</h1>
-              <p className="text-zinc-500">Sesión activa · ${table.hourly_rate}/hr</p>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-bold text-white">{table.name}</h1>
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-sm font-semibold">
+                  <User className="w-4 h-4" />
+                  {table.customerName || "Cliente"}
+                </div>
+              </div>
+              <p className="text-zinc-500 mt-1">Sesión activa · ${table.hourly_rate}/hr</p>
             </div>
           </div>
         </div>

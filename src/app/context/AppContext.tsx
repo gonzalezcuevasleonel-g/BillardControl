@@ -21,6 +21,7 @@ export interface Table {
   elapsedSeconds: number;
   products: CartItem[];
   sessionId: number | null;
+  customerName?: string | null;
 }
 
 export interface CartItem {
@@ -61,7 +62,7 @@ interface AppContextType extends AppState {
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   register: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  startTableSession: (tableId: number) => Promise<void>;
+  startTableSession: (tableId: number, customerName?: string) => Promise<void>;
   endTableSession: (tableId: number) => Promise<void>;
   addProductToTable: (tableId: number, product: Product, quantity: number) => void;
   removeProductFromTable: (tableId: number, productId: number) => void;
@@ -104,6 +105,7 @@ function dbTableToTable(db: DbTable, session?: DbTableSession): Table {
     elapsedSeconds,
     products: [],
     sessionId: session?.id || null,
+    customerName: session?.customer_name || null,
   };
 }
 
@@ -383,7 +385,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const startTableSession = async (tableId: number) => {
+  const startTableSession = async (tableId: number, customerName?: string) => {
     const userId = state.currentUserId;
     if (!userId) return;
 
@@ -396,6 +398,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         user_id: userId,
         start_time: now,
         is_active: true,
+        customer_name: customerName || null,
       })
       .select()
       .single();
@@ -419,6 +422,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               elapsedSeconds: 0,
               products: [],
               sessionId: sessionData.id,
+              customerName: sessionData.customer_name,
             }
           : t
       ),
