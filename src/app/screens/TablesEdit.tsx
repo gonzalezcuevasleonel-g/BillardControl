@@ -20,25 +20,21 @@ export function TablesEdit() {
   const { tables, addTable, updateTable, deleteTable } = useApp();
 
   const [newName, setNewName] = useState("");
-  const [newType, setNewType] = useState("");
-  const [editingId, setEditingId] = useState<string | null>(null);
+  const [newPrice, setNewPrice] = useState("");
+  const [editingId, setEditingId] = useState<number | null>(null);
   const [editName, setEditName] = useState("");
-  const [editType, setEditType] = useState("");
+  const [editPrice, setEditPrice] = useState("");
 
   const handleAdd = () => {
-    if (!newName.trim() || !newType) return;
-    const selected = TABLE_TYPES.find((t) => t.label === newType);
-    if (!selected) return;
-    addTable(newName, selected.rate);
+    if (!newName.trim() || !newPrice) return;
+    addTable(newName, parseFloat(newPrice));
     setNewName("");
-    setNewType("");
+    setNewPrice("");
   };
 
-  const handleUpdate = (id: string) => {
-    if (!editName.trim() || !editType) return;
-    const selected = TABLE_TYPES.find((t) => t.label === editType);
-    if (!selected) return;
-    updateTable(id, editName, selected.rate);
+  const handleUpdate = (id: number) => {
+    if (!editName.trim() || !editPrice) return;
+    updateTable(id, editName, parseFloat(editPrice));
     setEditingId(null);
   };
 
@@ -57,27 +53,48 @@ export function TablesEdit() {
           <h1 className="text-2xl font-bold text-white">Editar Mesas</h1>
         </div>
 
-        {/* Crear mesa */}
-        <div className="flex flex-wrap gap-2 items-end">
-          <input
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="Nombre de mesa"
-            className="px-3 py-2 rounded bg-zinc-800 text-white border border-zinc-700 flex-1 min-w-[200px]"
-          />
-          <select
-            value={newType}
-            onChange={(e) => setNewType(e.target.value)}
-            className="px-3 py-2 rounded bg-zinc-800 text-white border border-zinc-700"
+        <div className="flex flex-wrap gap-2 items-end bg-zinc-900 p-4 rounded-xl border border-zinc-800 shadow-lg">
+          <div className="flex-1 min-w-[200px]">
+            <label className="text-xs text-zinc-500 font-bold uppercase mb-1 block">Nombre de Mesa</label>
+            <input
+              value={newName}
+              onChange={(e) => setNewName(e.target.value)}
+              placeholder="Ej: Mesa x"
+              className="w-full px-3 py-2 rounded bg-zinc-800 text-white border border-zinc-700 focus:border-green-500 outline-none transition-colors"
+            />
+          </div>
+          <div className="w-[150px]">
+            <label className="text-xs text-zinc-500 font-bold uppercase mb-1 block">Precio/Hora</label>
+            <input
+              type="number"
+              value={newPrice}
+              onChange={(e) => setNewPrice(e.target.value)}
+              placeholder="$0.00"
+              className="w-full px-3 py-2 rounded bg-zinc-800 text-white border border-zinc-700 focus:border-green-500 outline-none transition-colors"
+            />
+          </div>
+          <div className="w-[200px]">
+            <label className="text-xs text-zinc-500 font-bold uppercase mb-1 block">Tipo de mesa</label>
+            <select
+              onChange={(e) => {
+                const type = TABLE_TYPES.find(t => t.label === e.target.value);
+                if (type) setNewPrice(type.rate.toString());
+              }}
+              className="w-full px-3 py-2 rounded bg-zinc-800 text-white border border-zinc-700 outline-none"
+            >
+              <option value="">Seleccionar tipo...</option>
+              {TABLE_TYPES.map((t) => (
+                <option key={t.label} >
+                  {t.label}
+                </option>
+              ))}
+            </select>
+          </div>
+          <Button
+            onClick={handleAdd}
+            disabled={!newName.trim() || !newPrice}
+            className="bg-green-500 hover:bg-green-600 text-black font-bold h-10"
           >
-            <option value="">Tipo de mesa</option>
-            {TABLE_TYPES.map((t) => (
-              <option key={t.label} value={t.label}>
-                {t.label} (${t.rate}/hr)
-              </option>
-            ))}
-          </select>
-          <Button onClick={handleAdd} disabled={!newName.trim() || !newType}>
             <Plus className="w-4 h-4 mr-2" />
             Agregar
           </Button>
@@ -98,14 +115,24 @@ export function TablesEdit() {
                       onChange={(e) => setEditName(e.target.value)}
                       className="px-2 py-1 bg-zinc-800 text-white border border-zinc-700 rounded flex-1 min-w-0"
                     />
+                    <input
+                      type="number"
+                      value={editPrice}
+                      onChange={(e) => setEditPrice(e.target.value)}
+                      className="w-24 px-2 py-1 bg-zinc-800 text-white border border-zinc-700 rounded"
+                      placeholder="Precio"
+                    />
                     <select
-                      value={editType}
-                      onChange={(e) => setEditType(e.target.value)}
-                      className="px-2 py-1 bg-zinc-800 text-white border border-zinc-700 rounded"
+                      onChange={(e) => {
+                        const type = TABLE_TYPES.find(t => t.label === e.target.value);
+                        if (type) setEditPrice(type.rate.toString());
+                      }}
+                      className="w-32 px-2 py-1 bg-zinc-800 text-white border border-zinc-700 rounded text-xs"
                     >
+                      <option value="">Tipo...</option>
                       {TABLE_TYPES.map((t) => (
                         <option key={t.label} value={t.label}>
-                          {t.label} (${t.rate}/hr)
+                          {t.label}
                         </option>
                       ))}
                     </select>
@@ -113,7 +140,10 @@ export function TablesEdit() {
                 ) : (
                   <div className="flex items-center gap-2">
                     <span className="text-white font-medium truncate">{table.name}</span>
-                    <span className="px-2 py-1 bg-zinc-700 text-xs rounded-full text-zinc-300">
+                    <span className="px-2 py-1 bg-green-500/10 text-green-400 text-xs rounded-full border border-green-500/20 font-bold">
+                      ${table.hourly_rate}/hr
+                    </span>
+                    <span className="px-2 py-1 bg-zinc-700 text-[10px] rounded text-zinc-300">
                       {getTypeByRate(table.hourly_rate)}
                     </span>
                   </div>
@@ -122,7 +152,7 @@ export function TablesEdit() {
 
               <div className="flex gap-2">
                 {editingId === table.id ? (
-                  <Button onClick={() => handleUpdate(table.id)} disabled={!editName.trim() || !editType} size="sm">
+                  <Button onClick={() => handleUpdate(table.id)} disabled={!editName.trim() || !editPrice} size="sm">
                     Guardar
                   </Button>
                 ) : (
@@ -130,7 +160,7 @@ export function TablesEdit() {
                     onClick={() => {
                       setEditingId(table.id);
                       setEditName(table.name);
-                      setEditType(getTypeByRate(table.hourly_rate));
+                      setEditPrice(table.hourly_rate.toString());
                     }}
                     size="sm"
                   >

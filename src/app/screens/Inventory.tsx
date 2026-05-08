@@ -27,6 +27,7 @@ export function Inventory() {
     stock: '',
     min_stock: '',
     category: 'beer' as 'beer' | 'snack' | 'drink',
+    cost: '',
   });
 
   const filteredProducts = products.filter((product) =>
@@ -36,12 +37,13 @@ export function Inventory() {
   const openEditModal = (product: Product) => {
     setEditingProduct(product);
     setFormData({
-      id: product.id,
+      id: product.id.toString(),
       name: product.name,
       price: product.price.toString(),
       stock: product.stock.toString(),
       min_stock: product.min_stock.toString(),
       category: product.category.toString() as 'beer' | 'snack' | 'drink',
+      cost: product.cost?.toString() || '0',
     });
     setShowModal(true);
   };
@@ -55,6 +57,7 @@ export function Inventory() {
       stock: '',
       min_stock: '',
       category: 'beer',
+      cost: '',
     });
     setShowModal(true);
   };
@@ -71,6 +74,7 @@ export function Inventory() {
       stock: parseInt(formData.stock),
       min_stock: parseInt(formData.min_stock || '0'),
       category: formData.category,
+      cost: parseFloat(formData.cost || '0'),
     };
 
     if (editingProduct) {
@@ -216,6 +220,11 @@ export function Inventory() {
                   <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-400">
                     Precio
                   </th>
+                  {isAdmin && (
+                    <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-400">
+                      Costo
+                    </th>
+                  )}
                   <th className="px-6 py-4 text-left text-sm font-semibold text-zinc-400">
                     Stock
                   </th>
@@ -255,6 +264,13 @@ export function Inventory() {
                             ${product.price}
                           </p>
                         </td>
+                        {isAdmin && (
+                          <td className="px-6 py-4">
+                            <p className="text-zinc-400 font-medium">
+                              ${product.cost || 0}
+                            </p>
+                          </td>
+                        )}
                         <td className="px-6 py-4">
                           <p className="text-white font-medium">{product.stock}</p>
                         </td>
@@ -357,6 +373,27 @@ export function Inventory() {
                 {!isAdmin && (
                   <p className="text-xs text-orange-400 mt-1">
                     Solo admin puede editar precios
+                  </p>
+                )}
+              </div>
+
+              <div>
+                <Label className="text-zinc-400">Costo (Compra)</Label>
+                <Input
+                  type="number"
+                  value={formData.cost}
+                  onChange={(e) =>
+                    setFormData({ ...formData, cost: e.target.value })
+                  }
+                  className="bg-zinc-800 border-zinc-700 text-white mt-1"
+                  placeholder="0.00"
+                  step="0.01"
+                  disabled={!isAdmin}
+                  title={!isAdmin ? 'Solo administradores pueden editar costos' : ''}
+                />
+                {!isAdmin && (
+                  <p className="text-xs text-orange-400 mt-1">
+                    Solo admin puede editar costos
                   </p>
                 )}
               </div>

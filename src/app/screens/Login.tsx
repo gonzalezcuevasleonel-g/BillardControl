@@ -8,10 +8,8 @@ import { Input } from '../components/ui/input';
 import { toast } from 'sonner';
 
 export function Login() {
-  const [isRegister, setIsRegister] = useState(false);
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
-  const [confirmPassword, setConfirmPassword] = useState('');
   const [error, setError] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const { login, register } = useApp();
@@ -21,31 +19,6 @@ export function Login() {
     e.preventDefault();
     setError('');
     setIsLoading(true);
-
-    if (isRegister) {
-      if (password !== confirmPassword) {
-        setError('Las contraseñas no coinciden');
-        setIsLoading(false);
-        return;
-      }
-      if (password.length < 6) {
-        setError('La contraseña debe tener al menos 6 caracteres');
-        setIsLoading(false);
-        return;
-      }
-
-      const result = await register(username, password);
-      if (result.success) {
-        toast.success('Usuario registrado exitosamente');
-        setIsRegister(false);
-        setPassword('');
-        setConfirmPassword('');
-      } else {
-        setError(result.error || 'Error al registrar usuario');
-      }
-      setIsLoading(false);
-      return;
-    }
 
     const success = await login(username, password);
     if (success) {
@@ -96,26 +69,43 @@ export function Login() {
 
           <div className="p-8">
             <div className="text-center mb-8">
-              <div className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-500/10 mb-4 relative">
-                <Circle className="w-12 h-12 text-green-400" strokeWidth={2} />
+              <motion.div 
+                whileHover={{ 
+                  scale: 1.1,
+                  rotate: [0, -10, 10, -5, 5, 0],
+                  x: [0, -5, 5, -2, 2, 0],
+                  y: [0, 5, -5, 2, -2, 0]
+                }}
+                transition={{ 
+                  duration: 0.5,
+                  type: "spring",
+                  stiffness: 300,
+                  damping: 10
+                }}
+                className="inline-flex items-center justify-center w-20 h-20 rounded-full bg-green-500/10 mb-4 relative cursor-pointer group"
+              >
+                <Circle className="w-12 h-12 text-green-400 group-hover:text-green-300 transition-colors" strokeWidth={2} />
                 <motion.div
                   animate={{
-                    scale: [1, 1.2, 1],
-                    opacity: [0.5, 0.8, 0.5],
+                    scale: [1, 1.3, 1],
+                    opacity: [0.3, 0.6, 0.3],
+                    boxShadow: [
+                      "0 0 20px rgba(34, 197, 94, 0.2)",
+                      "0 0 40px rgba(34, 197, 94, 0.4)",
+                      "0 0 20px rgba(34, 197, 94, 0.2)"
+                    ]
                   }}
                   transition={{
-                    duration: 2,
+                    duration: 3,
                     repeat: Infinity,
+                    ease: "easeInOut"
                   }}
                   className="absolute inset-0 rounded-full bg-green-500/20 blur-md"
                 />
-              </div>
+              </motion.div>
               <h1 className="text-3xl font-bold text-white mb-2">
                 Billar<span className="text-green-400">Control</span>
               </h1>
-              <p className="text-zinc-500 text-sm">
-                {isRegister ? 'Crear nueva cuenta' : 'Sistema de Gestión'}
-              </p>
             </div>
 
             <form onSubmit={handleSubmit} className="space-y-6">
@@ -135,7 +125,7 @@ export function Login() {
                   />
                 </div>
               </div>
-                
+
 
               <div>
                 <label className="block text-sm font-medium text-zinc-400 mb-2">
@@ -152,30 +142,8 @@ export function Login() {
                     required
                   />
                 </div>
-                </div>
+              </div>
 
-              {isRegister && (
-                <motion.div
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                >
-                  <label className="block text-sm font-medium text-zinc-400 mb-2">
-                    Confirmar Contraseña
-                  </label>
-                  <div className="relative">
-                    <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
-                    <Input
-                      type="password"
-                      value={confirmPassword}
-                      onChange={(e) => setConfirmPassword(e.target.value)}
-                      className="pl-10 bg-zinc-800 border-zinc-700 text-white focus:border-green-500 focus:ring-green-500/20"
-                      placeholder="Confirma tu contraseña"
-                      required
-                    />
-                  </div>
-                </motion.div>
-              )}
 
               {error && (
                 <motion.div
@@ -194,27 +162,10 @@ export function Login() {
               >
                 {isLoading
                   ? 'Procesando...'
-                  : isRegister
-                  ? 'Registrarse'
                   : 'Iniciar Sesión'}
               </Button>
             </form>
-
-            <div className="mt-6 text-center">
-              <button
-                type="button"
-                onClick={() => {
-                  setIsRegister(!isRegister);
-                  setError('');
-                }}
-                className="text-sm text-zinc-400 hover:text-green-400 transition-colors"
-              >
-                {isRegister
-                  ? '¿Ya tienes cuenta? Inicia sesión'
-                  : '¿No tienes cuenta? Regístrate'}
-              </button>
-            </div>
-            </div>
+          </div>
         </div>
       </motion.div>
     </div>

@@ -8,12 +8,13 @@ import {
   Clock,
   Receipt,
   Printer,
-  CheckCircle,
+  Trash2,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+import { useNavigate } from 'react-router';
 import { useApp, Sale } from '../context/AppContext';
 import { Layout } from '../components/Layout';
-import { Dialog, DialogContent } from '../components/ui/dialog';
+import { TicketModal } from '../components/TicketModal';
 import { Button } from '../components/ui/button';
 
 function formatTime(seconds: number) {
@@ -63,17 +64,33 @@ function getTableType(hourlyRate: number) {
 }
 
 export function Dashboard() {
-  const { tables, dailyEarnings, sales, products } = useApp();
-  const [selectedReceipt, setSelectedReceipt] = useState<Sale | null>(null);
+  const navigate = useNavigate();
+  const { tables, dailyEarnings, sales, products, cancelSale, currentUserRoleId } = useApp();
+  const isAdmin = Number(currentUserRoleId) === 1;
+  const [selectedSale, setSelectedSale] = useState<any>(null);
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const activeTables = tables.filter((t) => t.status === 'occupied').length;
   const availableTables = tables.filter((t) => t.status === 'available').length;
-  const productsSoldToday = sales.reduce(
+  const todaySales = sales.filter((sale) => {
+    const saleDate = new Date(sale.timestamp);
+    const today = new Date();
+    return saleDate.toDateString() === today.toDateString();
+  });
+
+  const productsSoldToday = todaySales.reduce(
     (sum, sale) => sum + sale.items.reduce((s, item) => s + item.quantity, 0),
     0
   );
 
-  const recentActivity = [...sales].sort((a, b) => b.timestamp - a.timestamp).slice(0, 5);
+  const recentActivity = [...todaySales]
+    .sort((a, b) => b.timestamp - a.timestamp)
+    .slice(0, 5);
 
   const statsCards = [
     {
@@ -106,14 +123,76 @@ export function Dashboard() {
     },
   ];
 
+  const formatDate = (timestamp: number) => {
+    const date = new Date(timestamp);
+    return date.toLocaleTimeString('es-MX', {
+      hour: '2-digit',
+      minute: '2-digit',
+    });
+  };
+
+  const getTableType = (hourlyRate: number) => {
+    switch (hourlyRate) {
+      case 50:
+        return 'Billar';
+      case 60:
+        return 'Snorkel';
+      case 70:
+        return 'Carambola';
+      default:
+        return 'Mesa';
+    }
+  };
+
   return (
     <Layout>
       <div className="p-6 lg:p-8 space-y-8">
-        <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
-          <p className="text-zinc-500">
-            Resumen general de operaciones - {new Date().toLocaleDateString('es-MX')}
-          </p>
+        {/* Header */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
+            <p className="text-zinc-500">
+              Resumen general de operaciones - {new Date().toLocaleDateString('es-MX')}
+            </p>
+          </div>
+
+          {/* Neon Clock */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative px-6 py-3 bg-black/40 backdrop-blur-md rounded-2xl border border-green-500/30 overflow-hidden group"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-emerald-500/10 to-green-500/10 opacity-50 group-hover:opacity-100 transition-opacity" />
+            
+            {/* Pulsing Glow */}
+            <motion.div
+              animate={{
+                opacity: [0.4, 0.7, 0.4],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+              className="absolute -inset-4 bg-green-500/5 blur-2xl"
+            />
+
+            <div className="relative flex items-center gap-4">
+              <div className="flex flex-col items-center">
+                {/* Date above time */}
+                <span className="text-[10px] uppercase tracking-[0.2em] text-green-400/80 font-bold mb-1">
+                  {time.toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: 'short' }).replace('.', '')}
+                </span>
+                
+                <span className="text-3xl font-black tracking-widest text-green-400 font-mono" style={{ 
+                  textShadow: '0 0 10px rgba(74, 222, 128, 0.5), 0 0 20px rgba(74, 222, 128, 0.3)' 
+                }}>
+                  {time.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+                </span>
+                <span className="text-[10px] uppercase tracking-[0.3em] text-green-500/60 font-bold">Reloj del Sistema</span>
+              </div>
+            </div>
+          </motion.div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
@@ -154,10 +233,19 @@ export function Dashboard() {
             transition={{ delay: 0.4 }}
             className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 shadow-xl"
           >
-            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-              <TableProperties className="w-5 h-5 text-green-400" />
-              Estado de Mesas
-            </h2>
+            <div className="flex items-center justify-between mb-4">
+              <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                <TableProperties className="w-5 h-5 text-green-400" />
+                Estado de Mesas
+              </h2>
+              <button
+                onClick={() => navigate('/tables')}
+                className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-green-500/10 border border-green-500/30 text-green-400 text-sm font-medium hover:bg-green-500/20 hover:border-green-500/50 transition-all"
+              >
+                <TableProperties className="w-4 h-4" />
+                Ir a mesas
+              </button>
+            </div>
 
             <div className="grid grid-cols-4 gap-3">
               {tables.map((table) => (
@@ -167,10 +255,9 @@ export function Dashboard() {
                   className={`
                     aspect-square rounded-lg border-2 flex flex-col items-center justify-center
                     transition-all relative overflow-hidden
-                    ${
-                      table.status === 'occupied'
-                        ? 'bg-green-500/10 border-green-500/50 shadow-lg shadow-green-500/20'
-                        : 'bg-zinc-800 border-zinc-700'
+                    ${table.status === 'occupied'
+                      ? 'bg-green-500/10 border-green-500/50 shadow-lg shadow-green-500/20'
+                      : 'bg-zinc-800 border-zinc-700'
                     }
                   `}
                 >
@@ -182,21 +269,18 @@ export function Dashboard() {
                     />
                   )}
                   <Circle
-                    className={`w-6 h-6 mb-1 relative z-10 ${
-                      table.status === 'occupied' ? 'text-green-400' : 'text-zinc-600'
-                    }`}
+                    className={`w-6 h-6 mb-1 relative z-10 ${table.status === 'occupied' ? 'text-green-400' : 'text-zinc-600'
+                      }`}
                   />
                   <p
-                    className={`text-xs font-medium relative z-10 ${
-                      table.status === 'occupied' ? 'text-white' : 'text-zinc-500'
-                    }`}
+                    className={`text-xs font-medium relative z-10 ${table.status === 'occupied' ? 'text-white' : 'text-zinc-500'
+                      }`}
                   >
                     {table.name}
                   </p>
                   <p
-                    className={`text-[10px] relative z-10 ${
-                      table.status === 'occupied' ? 'text-green-300' : 'text-zinc-600'
-                    }`}
+                    className={`text-[10px] relative z-10 ${table.status === 'occupied' ? 'text-green-300' : 'text-zinc-600'
+                      }`}
                   >
                     {getTableType(table.hourly_rate)}
                   </p>
@@ -246,7 +330,36 @@ export function Dashboard() {
                           </p>
                           <p className="text-xs text-zinc-500">{formatFullDate(sale.timestamp)}</p>
                         </div>
-                        <p className="text-green-400 font-bold">${sale.total.toFixed(2)}</p>
+                        <div className="flex items-center gap-3">
+                          <p className="text-green-400 font-bold">${sale.total.toFixed(2)}</p>
+                          <button
+                            onClick={() => setSelectedSale({
+                              folio: sale.id,
+                              items: sale.items,
+                              productsCost: sale.total,
+                              totalCost: sale.total,
+                              endTime: sale.timestamp,
+                              customerName: sale.customer_name || (sale.session_id ? 'Venta de Mesa' : 'Venta Directa')
+                            })}
+                            className="p-2 hover:bg-zinc-700 rounded-lg text-zinc-500 hover:text-green-400 transition-all"
+                            title="Imprimir Ticket"
+                          >
+                            <Printer className="w-4 h-4" />
+                          </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => {
+                                if (window.confirm('¿Estás seguro de cancelar esta venta? El stock será restaurado.')) {
+                                  cancelSale(sale.id);
+                                }
+                              }}
+                              className="p-2 hover:bg-zinc-700 rounded-lg text-zinc-500 hover:text-red-400 transition-all"
+                              title="Cancelar Venta"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div className="text-xs text-zinc-400">
                         {sale.items.map((item, idx) => (
@@ -257,13 +370,6 @@ export function Dashboard() {
                         ))}
                       </div>
                     </div>
-                    <button
-                      onClick={() => setSelectedReceipt(sale)}
-                      className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 transition-colors flex-shrink-0"
-                      title="Ver recibo"
-                    >
-                      <Receipt className="w-4 h-4" />
-                    </button>
                   </motion.div>
                 ))
               )}
@@ -303,217 +409,12 @@ export function Dashboard() {
         </motion.div>
       </div>
 
-      <Dialog open={!!selectedReceipt} onOpenChange={() => setSelectedReceipt(null)}>
-        <DialogContent className="bg-zinc-950 border-zinc-800 max-w-md w-full p-0 overflow-hidden">
-          {selectedReceipt && (
-            <TicketReceipt sale={selectedReceipt} onClose={() => setSelectedReceipt(null)} />
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Ticket Modal */}
+      <TicketModal 
+        isOpen={!!selectedSale}
+        onClose={() => setSelectedSale(null)}
+        data={selectedSale}
+      />
     </Layout>
   );
 }
-
-function TicketReceipt({
-  sale,
-  onClose,
-}: {
-  sale: Sale;
-  onClose: () => void;
-}) {
-  // Supabase query in AppContext returns `table_session` nested when it's a mesa sale.
-  const session = (sale as any).table_session as any | undefined;
-  const table = session?.table as any | undefined;
-
-  const hasTableSession = Boolean(session?.id) || Boolean(sale.session_id);
-
-  const startMs = session?.start_time ? new Date(session.start_time).getTime() : null;
-  const endMs = session?.end_time ? new Date(session.end_time).getTime() : null;
-  const elapsedSeconds =
-    hasTableSession && startMs && endMs ? Math.max(0, Math.floor((endMs - startMs) / 1000)) : null;
-
-  const itemsFromSale = (sale as any).sale_items || (sale as any).items || [];
-  const products = itemsFromSale.map((i: any) => ({
-    name: String(i.product_name || 'Producto'),
-    price: Number(i.unit_price || 0),
-    quantity: Number(i.quantity || 0),
-  }));
-
-  const productsCost = products.reduce((sum: number, i) => sum + i.price * i.quantity, 0);
-
-  const hourlyRate: number | null = hasTableSession
-    ? typeof table?.hourly_rate === 'number'
-      ? table.hourly_rate
-      : null
-    : null;
-
-  const tableCost: number | null = (() => {
-    if (!hasTableSession) return null;
-
-    // Prefer DB-calculated value when available
-    if (typeof session?.total_time_price === 'number') return session.total_time_price;
-
-    // Fallback: compute from elapsed and hourly rate
-    if (elapsedSeconds !== null && hourlyRate !== null) return (elapsedSeconds / 3600) * hourlyRate;
-
-    return null;
-  })();
-
-  const tableName = hasTableSession && table?.name ? table.name : 'Mesa';
-  const totalCost = typeof sale.total === 'number' ? sale.total : 0;
-
-  const { time, date } = formatDateTimePair(sale.timestamp);
-
-  return (
-    <div id="dashboard-ticket" className="max-w-md">
-      <motion.div
-        initial={{ opacity: 0, y: -20 }}
-        animate={{ opacity: 1, y: 0 }}
-        className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-5"
-      >
-        <div className="flex items-center gap-3">
-          <div className="p-2 bg-white/20 rounded-full">
-            <CheckCircle className="w-6 h-6 text-white" />
-          </div>
-          <div>
-            <h2 className="text-xl font-bold text-white">Sesión Finalizada</h2>
-            <p className="text-green-100 text-sm">
-              {time} {' — '} {date}
-            </p>
-          </div>
-        </div>
-      </motion.div>
-
-      <motion.div
-        initial={{ opacity: 0 }}
-        animate={{ opacity: 1 }}
-        transition={{ delay: 0.15 }}
-        className="px-6 py-5 space-y-5"
-      >
-        {/* Tipo de venta */}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-zinc-400 text-xs uppercase tracking-widest">Tipo de venta</p>
-            <p className="text-white text-lg font-bold">
-              {hasTableSession ? 'Venta de mesa' : 'Venta directa'}
-            </p>
-          </div>
-          <div className="text-right">
-            <p className="text-zinc-400 text-xs uppercase tracking-widest">Tarifa</p>
-            <p className="text-zinc-300 font-semibold">
-              {hasTableSession && hourlyRate !== null ? `$${hourlyRate}/hr` : '--'}
-            </p>
-          </div>
-        </div>
-
-        {/* Mesa info */}
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-zinc-400 text-xs uppercase tracking-widest">Mesa</p>
-            <p className="text-white text-2xl font-bold">
-              {hasTableSession ? tableName : 'Venta Directa'}
-            </p>
-          </div>
-          <div />
-        </div>
-
-        <div className="border-t border-dashed border-zinc-700" />
-
-        {/* Time */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <Clock className="w-4 h-4 text-green-400" />
-            <span className="text-zinc-300 text-sm">Tiempo total</span>
-          </div>
-          <div className="text-right">
-            <span className="text-white font-mono font-bold">
-              {hasTableSession && elapsedSeconds !== null ? formatTime(elapsedSeconds) : '--:--:--'}
-            </span>
-            <p className="text-zinc-500 text-xs">
-              {hasTableSession && hourlyRate !== null && tableCost !== null
-                ? `$${hourlyRate}/hr → $${tableCost.toFixed(2)}`
-                : '-- → --'}
-            </p>
-          </div>
-        </div>
-
-        {/* Products */}
-        {products.length > 0 && (
-          <>
-            <div className="border-t border-dashed border-zinc-700" />
-            <div>
-              <p className="text-zinc-400 text-xs uppercase tracking-widest mb-3">Productos consumidos</p>
-              <div className="space-y-2">
-                {products.map((item, idx) => (
-                  <motion.div
-                    key={idx}
-                    initial={{ opacity: 0, x: -10 }}
-                    animate={{ opacity: 1, x: 0 }}
-                    transition={{ delay: 0.2 + idx * 0.05 }}
-                    className="flex items-center justify-between"
-                  >
-                    <div className="flex items-center gap-2">
-                      <span className="text-zinc-500 text-sm tabular-nums w-5 text-right">{item.quantity}×</span>
-                      <span className="text-zinc-300 text-sm">{item.name}</span>
-                    </div>
-                    <span className="text-white text-sm font-medium">${(item.price * item.quantity).toFixed(2)}</span>
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </>
-        )}
-
-        <div className="border-t border-dashed border-zinc-700" />
-
-        {/* Subtotals */}
-        <div className="space-y-1.5">
-          <div className="flex justify-between text-sm">
-            <span className="text-zinc-400">Tiempo de mesa</span>
-            <span className="text-zinc-300">{tableCost !== null ? `$${tableCost.toFixed(2)}` : '--'}</span>
-          </div>
-          {productsCost > 0 && (
-            <div className="flex justify-between text-sm">
-              <span className="text-zinc-400">Productos</span>
-              <span className="text-zinc-300">${productsCost.toFixed(2)}</span>
-            </div>
-          )}
-        </div>
-
-        {/* Total */}
-        <div className="bg-gradient-to-r from-purple-500/10 to-purple-600/10 border border-purple-500/30 rounded-xl p-4 flex items-center justify-between">
-          <span className="text-white font-bold text-lg">TOTAL</span>
-          <span className="text-3xl font-bold text-purple-400">${totalCost.toFixed(2)}</span>
-        </div>
-      </motion.div>
-
-      <div className="px-6 pb-6 no-print">
-        <Button
-          onClick={() => window.print()}
-          variant="outline"
-          className="w-full mb-3 bg-green-500 hover:bg-green-600 text-black font-bold text-base py-6"
-        >
-          <Printer className="w-5 h-5 mr-2" />
-          Imprimir Ticket
-        </Button>
-        <Button
-          onClick={onClose}
-          className="w-full bg-green-500 hover:bg-green-600 text-black font-bold text-base py-6"
-        >
-          <Receipt className="w-5 h-5 mr-2" />
-          Cerrar
-        </Button>
-      </div>
-
-      <style>{`
-        @media print {
-          .no-print { display: none !important; }
-          #dashboard-ticket { page-break-inside: avoid; }
-          html, body { margin: 0 !important; padding: 0 !important; }
-        }
-      `}</style>
-    </div>
-  );
-}
-
-

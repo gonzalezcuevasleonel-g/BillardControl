@@ -1,10 +1,13 @@
+import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Circle, Play, Square, Clock, Plus } from 'lucide-react';
+import { Circle, Play, Square, Clock, Plus, DollarSign } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Layout } from '../components/Layout';
 import { Button } from '../components/ui/button';
 import { useNavigate } from 'react-router';
-import { Pencil } from "lucide-react";
+import { Pencil, User } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '../components/ui/dialog';
+import { Input } from '../components/ui/input';
 
 const TABLE_TYPES = [
   { label: "Billar", rate: 50 },
@@ -17,7 +20,7 @@ function getTypeByRate(rate: number) {
 }
 
 export function Tables() {
-  const { tables, startTableSession } = useApp();
+  const { tables, startTableSession, currentUserRoleId } = useApp();
   const navigate = useNavigate();
 
   const formatTime = (seconds: number) => {
@@ -29,8 +32,23 @@ export function Tables() {
       .padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
   };
 
-  const handleStartSession = (tableId: number) => {
-    startTableSession(tableId);
+  const [isModalOpen, setIsModalOpen] = useState(false);
+  const [selectedTableId, setSelectedTableId] = useState<number | null>(null);
+  const [customerName, setCustomerName] = useState("");
+
+  const handleStartSessionClick = (tableId: number) => {
+    setSelectedTableId(tableId);
+    setCustomerName("");
+    setIsModalOpen(true);
+  };
+
+  const confirmStartSession = () => {
+    if (selectedTableId !== null) {
+      startTableSession(selectedTableId, customerName || "Cliente");
+      setIsModalOpen(false);
+      setSelectedTableId(null);
+      setCustomerName("");
+    }
   };
 
   const handleManageSession = (tableId: number) => {
@@ -44,15 +62,17 @@ export function Tables() {
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">Gestión de Mesas</h1>
           <p className="text-zinc-500">Administra las sesiones de billar</p>
-          <div className="flex">
-            <Button
-              onClick={() => navigate('/tables/edit')}
-              className="ml-auto bg-green-500 hover:bg-green-600 text-black font-semibold shadow-lg shadow-green-500/30"
-            >
-              <Pencil className="w-4 h-4 mr-2" />
-              Editar Mesas
-            </Button>
-          </div>
+          {Number(currentUserRoleId) === 1 && (
+            <div className="flex">
+              <Button
+                onClick={() => navigate('/tables/edit')}
+                className="ml-auto bg-green-500 hover:bg-green-600 text-black font-semibold shadow-lg shadow-green-500/30"
+              >
+                <Pencil className="w-4 h-4 mr-2" />
+                Editar Mesas
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Tables Grid */}
@@ -66,10 +86,9 @@ export function Tables() {
               whileHover={{ scale: 1.02, y: -4 }}
               className={`
                 rounded-xl border-2 p-6 shadow-xl transition-all relative overflow-hidden
-                ${
-                  table.status === 'occupied'
-                    ? 'bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/50 shadow-green-500/20'
-                    : 'bg-zinc-900 border-zinc-800'
+                ${table.status === 'occupied'
+                  ? 'bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/50 shadow-green-500/20'
+                  : 'bg-zinc-900 border-zinc-800'
                 }
               `}
             >
@@ -97,26 +116,23 @@ export function Tables() {
                     <div
                       className={`
                       p-3 rounded-lg
-                      ${
-                        table.status === 'occupied'
+                      ${table.status === 'occupied'
                           ? 'bg-green-500/20 border border-green-500/30'
                           : 'bg-zinc-800 border border-zinc-700'
-                      }
+                        }
                     `}
                     >
                       <Circle
-                        className={`w-6 h-6 ${
-                          table.status === 'occupied' ? 'text-green-400' : 'text-zinc-500'
-                        }`}
+                        className={`w-6 h-6 ${table.status === 'occupied' ? 'text-green-400' : 'text-zinc-500'
+                          }`}
                       />
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-white">{table.name}</h3>
                       <div className="flex gap-1 items-center">
                         <p
-                          className={`text-sm font-medium ${
-                            table.status === 'occupied' ? 'text-green-400' : 'text-zinc-500'
-                          }`}
+                          className={`text-sm font-medium ${table.status === 'occupied' ? 'text-green-400' : 'text-zinc-500'
+                            }`}
                         >
                           {table.status === 'occupied' ? 'Ocupada' : 'Disponible'}
                         </p>
@@ -128,16 +144,37 @@ export function Tables() {
                   </div>
                 </div>
 
+                {/* Price Info for available tables */}
+                {table.status === 'available' && (
+                  <div className="mb-4 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700/50 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-green-400" />
+                      <span className="text-sm text-zinc-400">Precio por hora</span>
+                    </div>
+                    <p className="text-xl font-bold text-white">${table.hourly_rate}</p>
+                  </div>
+                )}
+
                 {/* Timer for occupied tables */}
                 {table.status === 'occupied' && (
-                  <div className="mb-4 p-4 bg-black/30 rounded-lg border border-green-500/20">
-                    <div className="flex items-center gap-2 mb-2">
-                      <Clock className="w-4 h-4 text-green-400" />
-                      <span className="text-xs text-zinc-400">Tiempo transcurrido</span>
+                  <div className="space-y-3 mb-4">
+                    <div className="p-3 bg-purple-500/10 rounded-lg border border-purple-500/20">
+                      <div className="flex items-center gap-2 mb-1">
+                        <User className="w-3 h-3 text-purple-400" />
+                        <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Cliente</span>
+                      </div>
+                      <p className="text-white font-semibold truncate">{table.customerName || "Cliente"}</p>
                     </div>
-                    <p className="text-xl font-mono font-bold text-green-400">
-                      {formatTime(table.elapsedSeconds)}
-                    </p>
+
+                    <div className="p-3 bg-black/30 rounded-lg border border-green-500/20">
+                      <div className="flex items-center gap-2 mb-1">
+                        <Clock className="w-3 h-3 text-green-400" />
+                        <span className="text-[10px] text-zinc-500 uppercase font-bold tracking-wider">Tiempo transcurrido</span>
+                      </div>
+                      <p className="text-xl font-mono font-bold text-green-400">
+                        {formatTime(table.elapsedSeconds)}
+                      </p>
+                    </div>
                   </div>
                 )}
 
@@ -164,7 +201,7 @@ export function Tables() {
                 <div className="space-y-2">
                   {table.status === 'available' ? (
                     <Button
-                      onClick={() => handleStartSession(table.id)}
+                      onClick={() => handleStartSessionClick(table.id)}
                       className="w-full bg-green-500 hover:bg-green-600 text-black font-semibold shadow-lg shadow-green-500/30"
                     >
                       <Play className="w-4 h-4 mr-2" />
@@ -185,6 +222,52 @@ export function Tables() {
           ))}
         </div>
       </div>
+
+      <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
+        <DialogContent className="bg-zinc-950 border-zinc-800 max-w-md">
+          <DialogHeader>
+            <DialogTitle className="text-2xl font-bold text-white flex items-center gap-2">
+              <Play className="text-green-500" />
+              Iniciar Sesión
+            </DialogTitle>
+            <DialogDescription className="text-zinc-500">
+              Ingresa el nombre del cliente responsable de la mesa.
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-6 mt-4">
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-zinc-400">Nombre del Cliente</label>
+              <div className="relative">
+                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-5 h-5 text-zinc-500" />
+                <Input
+                  value={customerName}
+                  onChange={(e) => setCustomerName(e.target.value)}
+                  className="pl-10 bg-zinc-900 border-zinc-800 text-white"
+                  placeholder="ej: Juan Pérez"
+                  autoFocus
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-3 pt-2">
+              <Button
+                variant="outline"
+                onClick={() => setIsModalOpen(false)}
+                className="flex-1 bg-transparent border-zinc-800 text-white hover:bg-zinc-900"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={confirmStartSession}
+                className="flex-1 bg-green-500 hover:bg-green-600 text-black font-bold"
+              >
+                Iniciar Mesa
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </Layout>
   );
 }

@@ -10,19 +10,25 @@ import {
   ArrowLeft,
   CheckCircle,
   Printer,
+  Trash2,
+  User,
+  Search,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Layout } from '../components/Layout';
+import { TicketModal } from '../components/TicketModal';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 
 export function TableSession() {
   const { tableId } = useParams();
   const navigate = useNavigate();
-  const { tables, products, addProductToTable, endTableSession } = useApp();
+  const { tables, products, addProductToTable, removeProductFromTable, endTableSession } = useApp();
   const [showProductModal, setShowProductModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [quantity, setQuantity] = useState(1);
+  const [productSearch, setProductSearch] = useState("");
 
   // Receipt state — stores a snapshot of the session when "Finalizar" is pressed
   const [receipt, setReceipt] = useState<{
@@ -34,6 +40,8 @@ export function TableSession() {
     productsCost: number;
     totalCost: number;
     endTime: Date;
+    customerName: string;
+    usageTime: string;
   } | null>(null);
 
   const table = tables.find((t) => t.id === Number(tableId));
@@ -51,137 +59,20 @@ export function TableSession() {
   if (receipt) {
     return (
       <Layout>
-        <Dialog open={true} onOpenChange={() => navigate('/tables')}>
-          <DialogContent
-            className="bg-zinc-950 border-zinc-800 max-w-md w-full p-0 overflow-hidden"
-            onPointerDownOutside={(e) => e.preventDefault()}
-          >
-            {/* Header */}
-            <motion.div
-              initial={{ opacity: 0, y: -20 }}
-              animate={{ opacity: 1, y: 0 }}
-              className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-5"
-            >
-              <div className="flex items-center gap-3">
-                <div className="p-2 bg-white/20 rounded-full">
-                  <CheckCircle className="w-6 h-6 text-white" />
-                </div>
-                <div>
-                  <h2 className="text-xl font-bold text-white">Sesión Finalizada</h2>
-                  <p className="text-green-100 text-sm">
-                    {receipt.endTime.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit' })}
-                    {' — '}
-                    {receipt.endTime.toLocaleDateString('es-MX', { day: '2-digit', month: 'short', year: 'numeric' })}
-                  </p>
-                </div>
-              </div>
-            </motion.div>
-
-            {/* Ticket Body */}
-            <motion.div
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.15 }}
-              className="px-6 py-5 space-y-5"
-            >
-              {/* Table info */}
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-zinc-400 text-xs uppercase tracking-widest">Mesa</p>
-                  <p className="text-white text-2xl font-bold">{receipt.tableName}</p>
-                </div>
-                <div className="text-right">
-                  <p className="text-zinc-400 text-xs uppercase tracking-widest">Tarifa</p>
-                  <p className="text-zinc-300 font-semibold">${receipt.hourlyRate}/hr</p>
-                </div>
-              </div>
-
-              <div className="border-t border-dashed border-zinc-700" />
-
-              {/* Time */}
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-2">
-                  <Clock className="w-4 h-4 text-green-400" />
-                  <span className="text-zinc-300 text-sm">Tiempo total</span>
-                </div>
-                <div className="text-right">
-                  <span className="text-white font-mono font-bold">{formatTime(receipt.elapsedSeconds)}</span>
-                  <p className="text-zinc-500 text-xs">
-                    ${receipt.hourlyRate}/hr → ${receipt.tableCost.toFixed(2)}
-                  </p>
-                </div>
-              </div>
-
-              {/* Products */}
-              {receipt.products.length > 0 && (
-                <>
-                  <div className="border-t border-dashed border-zinc-700" />
-                  <div>
-                    <p className="text-zinc-400 text-xs uppercase tracking-widest mb-3">Productos consumidos</p>
-                    <div className="space-y-2">
-                      {receipt.products.map((item, idx) => (
-                        <motion.div
-                          key={idx}
-                          initial={{ opacity: 0, x: -10 }}
-                          animate={{ opacity: 1, x: 0 }}
-                          transition={{ delay: 0.2 + idx * 0.05 }}
-                          className="flex items-center justify-between"
-                        >
-                          <div className="flex items-center gap-2">
-                            <span className="text-zinc-500 text-sm tabular-nums w-5 text-right">{item.quantity}×</span>
-                            <span className="text-zinc-300 text-sm">{item.name}</span>
-                          </div>
-                          <span className="text-white text-sm font-medium">${(item.price * item.quantity).toFixed(2)}</span>
-                        </motion.div>
-                      ))}
-                    </div>
-                  </div>
-                </>
-              )}
-
-              <div className="border-t border-dashed border-zinc-700" />
-
-              {/* Subtotals */}
-              <div className="space-y-1.5">
-                <div className="flex justify-between text-sm">
-                  <span className="text-zinc-400">Tiempo de mesa</span>
-                  <span className="text-zinc-300">${receipt.tableCost.toFixed(2)}</span>
-                </div>
-                {receipt.productsCost > 0 && (
-                  <div className="flex justify-between text-sm">
-                    <span className="text-zinc-400">Productos</span>
-                    <span className="text-zinc-300">${receipt.productsCost.toFixed(2)}</span>
-                  </div>
-                )}
-              </div>
-
-              {/* Total */}
-              <div className="bg-gradient-to-r from-purple-500/10 to-purple-600/10 border border-purple-500/30 rounded-xl p-4 flex items-center justify-between">
-                <span className="text-white font-bold text-lg">TOTAL</span>
-                <span className="text-3xl font-bold text-purple-400">${receipt.totalCost.toFixed(2)}</span>
-              </div>
-            </motion.div>
-
-            {/* Footer */}
-            <div className="px-6 pb-6">
-            <Button
-                onClick={() => window.print()}
-                variant="outline"
-                className="w-full mb-3 bg-green-500 hover:bg-green-600 text-black font-bold text-base py-6"
-                >
-                  <Printer className="w-5 h-5 mr-2" />
-                  Imprimir Ticket
-              </Button>
-              <Button
-                onClick={() => navigate('/tables')}
-                className="w-full bg-green-500 hover:bg-green-600 text-black font-bold text-base py-6"
-              >
-                <Receipt className="w-5 h-5 mr-2" />
-                Cerrar y volver a Mesas
-              </Button>
-            </div>
-          </DialogContent>
-        </Dialog>
+        <TicketModal
+          isOpen={true}
+          onClose={() => navigate('/tables')}
+          data={{
+            folio: table?.sessionId || 'S/N',
+            customerName: receipt.customerName,
+            items: receipt.products,
+            tableCost: receipt.tableCost,
+            productsCost: receipt.productsCost,
+            totalCost: receipt.totalCost,
+            endTime: receipt.endTime,
+            usageTime: receipt.usageTime
+          }}
+        />
       </Layout>
     );
   }
@@ -207,6 +98,10 @@ export function TableSession() {
   );
   const totalCost = tableCost + productsCost;
 
+  const filteredProducts = products.filter(p => 
+    p.name.toLowerCase().includes(productSearch.toLowerCase())
+  );
+
   const handleAddProduct = () => {
     if (selectedProduct && quantity > 0) {
       addProductToTable(table.id, selectedProduct, quantity);
@@ -231,6 +126,8 @@ export function TableSession() {
       productsCost: pCost,
       totalCost: tCost + pCost,
       endTime: new Date(),
+      customerName: table.customerName || "Cliente",
+      usageTime: formatTime(table.elapsedSeconds),
     });
 
     // 2. End the session
@@ -257,8 +154,14 @@ export function TableSession() {
               <ArrowLeft className="w-4 h-4" />
             </Button>
             <div>
-              <h1 className="text-3xl font-bold text-white">{table.name}</h1>
-              <p className="text-zinc-500">Sesión activa · ${table.hourly_rate}/hr</p>
+              <div className="flex items-center gap-3">
+                <h1 className="text-3xl font-bold text-white">{table.name}</h1>
+                <div className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-sm font-semibold">
+                  <User className="w-4 h-4" />
+                  {table.customerName || "Cliente"}
+                </div>
+              </div>
+              <p className="text-zinc-500 mt-1">Sesión activa · ${table.hourly_rate}/hr</p>
             </div>
           </div>
         </div>
@@ -370,9 +273,18 @@ export function TableSession() {
                           ${item.price} x {item.quantity}
                         </p>
                       </div>
-                      <p className="text-xl font-bold text-green-400">
-                        ${(item.price * item.quantity).toFixed(2)}
-                      </p>
+                      <div className="flex items-center gap-4">
+                        <p className="text-xl font-bold text-green-400">
+                          ${(item.price * item.quantity).toFixed(2)}
+                        </p>
+                        <button
+                          onClick={() => removeProductFromTable(table.id, item.productId)}
+                          className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                          title="Eliminar producto"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
@@ -386,10 +298,21 @@ export function TableSession() {
               transition={{ delay: 0.3 }}
               className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 shadow-xl"
             >
-              <h2 className="text-xl font-bold text-white mb-4">Agregar Productos</h2>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <h2 className="text-xl font-bold text-white whitespace-nowrap">Agregar Productos</h2>
+                <div className="relative w-full md:max-w-xs">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <Input 
+                    placeholder="Buscar producto..."
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    className="pl-9 bg-zinc-800 border-zinc-700 text-white h-9 text-sm"
+                  />
+                </div>
+              </div>
 
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {products.map((product) => (
+                {filteredProducts.map((product) => (
                   <motion.button
                     key={product.id}
                     whileHover={{ scale: 1.05, y: -4 }}

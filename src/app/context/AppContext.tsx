@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { toast } from 'sonner';
 import { supabase, loginUser } from '../../utils/supabase';
-import type { DbProduct, DbTable, DbTableSession, DbSale, DbSaleItem } from '../../utils/supabase';
+import type { DbProduct, DbTable, DbTableSession, DbSale, DbSaleItem, DbUser } from '../../utils/supabase';
 
 export interface Product {
   id: number;
@@ -10,6 +10,7 @@ export interface Product {
   stock: number;
   min_stock: number;
   category: string;
+  cost: number;
 }
 
 export interface Table {
@@ -21,6 +22,7 @@ export interface Table {
   elapsedSeconds: number;
   products: CartItem[];
   sessionId: number | null;
+  customerName?: string | null;
 }
 
 export interface CartItem {
@@ -37,6 +39,7 @@ export interface Sale {
   session_id?: number | null;
   total: number;
   items: CartItem[];
+  customer_name?: string | null;
 }
 
 interface UserSession {
@@ -61,9 +64,10 @@ interface AppContextType extends AppState {
   login: (username: string, password: string) => Promise<boolean>;
   logout: () => void;
   register: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
-  startTableSession: (tableId: number) => Promise<void>;
+  startTableSession: (tableId: number, customerName?: string) => Promise<void>;
   endTableSession: (tableId: number) => Promise<void>;
   addProductToTable: (tableId: number, product: Product, quantity: number) => void;
+  removeProductFromTable: (tableId: number, productId: number) => void;
   createPOSSale: (items: CartItem[]) => Promise<void>;
   updateProduct: (product: Product) => Promise<void>;
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
@@ -71,6 +75,11 @@ interface AppContextType extends AppState {
   updateTable: (id: number, newName: string, hourly_rate?: number) => Promise<void>;
   deleteTable: (id: number) => Promise<void>;
   closeDailyCut: (cashDifference: number) => void;
+  fetchUsers: () => Promise<DbUser[]>;
+  deleteUser: (id_user: number) => Promise<void>;
+  updateUserRole: (id_user: number, id_rol: number) => Promise<void>;
+  updateUserPassword: (id_user: number, newPassword: string) => Promise<void>;
+  cancelSale: (saleId: number) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -83,6 +92,7 @@ function dbProductToProduct(db: DbProduct): Product {
     stock: db.stock,
     min_stock: db.min_stock,
     category: db.category,
+    cost: db.cost || 0,
   };
 }
 
@@ -99,16 +109,18 @@ function dbTableToTable(db: DbTable, session?: DbTableSession): Table {
     elapsedSeconds,
     products: [],
     sessionId: session?.id || null,
+    customerName: session?.customer_name || null,
   };
 }
 
-function dbSaleToSale(db: DbSale, items: DbSaleItem[] = [], tableSession?: any, table?: any): Sale {
+function dbSaleToSale(db: any, items: DbSaleItem[] = []): Sale {
   return {
     id: db.id_sale,
     timestamp: new Date(db.created_at).getTime(),
     user_id: db.user_id,
     session_id: db.session_id || undefined,
     total: db.total_sale,
+    customer_name: db.table_sessions?.customer_name || null,
     items: items.map(i => ({
       productId: i.product_id ?? 0,
       name: i.product_name,
@@ -162,21 +174,9 @@ export function AppProvider({ children }: { children: ReactNode }) {
       if (sessionsError) throw sessionsError;
 
       const { data: salesData, error: salesError } = await supabase
-      .from('sales')
-      .select(`
-        *,
-        table_session:table_sessions (
-          id,
-          start_time,
-          end_time,
-          total_time_price,
-          table:tables (
-            id,
-            name,
-            hourly_rate
-          )
-        )
-      `).order('created_at', { ascending: false });
+        .from('sales')
+        .select('*, sale_items(*), table_sessions(customer_name)')
+        .order('created_at', { ascending: false });
 
       if (salesError) throw salesError;
 
@@ -397,7 +397,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   };
 
-  const startTableSession = async (tableId: number) => {
+  const startTableSession = async (tableId: number, customerName?: string) => {
     const userId = state.currentUserId;
     if (!userId) return;
 
@@ -410,6 +410,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         user_id: userId,
         start_time: now,
         is_active: true,
+        customer_name: customerName || null,
       })
       .select()
       .single();
@@ -433,6 +434,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
               elapsedSeconds: 0,
               products: [],
               sessionId: sessionData.id,
+              customerName: sessionData.customer_name,
             }
           : t
       ),
@@ -534,6 +536,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const removeProductFromTable = (tableId: number, productId: number) => {
+    setState(prev => ({
+      ...prev,
+      tables: prev.tables.map(t => {
+        if (t.id !== tableId) return t;
+        return {
+          ...t,
+          products: t.products.filter(p => p.productId !== productId),
+        };
+      }),
+    }));
+  };
+
   const createPOSSale = async (items: CartItem[]) => {
     const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
     const userId = state.currentUserId;
@@ -589,6 +604,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         stock: product.stock,
         min_stock: product.min_stock,
         category: product.category,
+        cost: product.cost,
       })
       .eq('id', product.id);
 
@@ -602,7 +618,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addProduct = async (product: Omit<Product, 'id'>) => {
     const { data, error } = await supabase
       .from('products')
-      .insert(product)
+      .insert({
+        name: product.name,
+        price: product.price,
+        stock: product.stock,
+        min_stock: product.min_stock,
+        category: product.category,
+        cost: product.cost,
+      })
       .select()
       .single();
 
@@ -613,29 +636,37 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const closeDailyCut = async (cashDifference: number) => {
-  try {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+  const cancelSale = async (saleId: number) => {
+    const sale = state.sales.find(s => s.id === saleId);
+    if (!sale) return;
 
-    // Obtener IDs de las ventas del día
-    const todaySales = state.sales.filter(s => {
-      const saleDate = new Date(s.timestamp);
-      saleDate.setHours(0, 0, 0, 0);
-      return saleDate.getTime() === today.getTime();
-    });
-
-    const saleIds = todaySales.map(s => s.id);
-
-    if (saleIds.length > 0) {
-      // Eliminar sale_items del día
-      await supabase.from('sale_items').delete().in('sale_id', saleIds);
-
-      // Eliminar sales del día
-      await supabase.from('sales').delete().in('id_sale', saleIds);
+    // 1. Restaurar stock de productos
+    for (const item of sale.items) {
+      const product = state.products.find(p => p.id === item.productId);
+      if (product) {
+        const newStock = product.stock + item.quantity;
+        await supabase.from('products').update({ stock: newStock }).eq('id', item.productId);
+      }
     }
 
-    // Reiniciar el estado
+    // 2. Eliminar la venta
+    const { error } = await supabase
+      .from('sales')
+      .delete()
+      .eq('id_sale', saleId);
+
+    if (error) {
+      console.error('Error cancelling sale:', error);
+      toast.error('Error al cancelar venta: ' + error.message);
+      return;
+    }
+
+    toast.success('Venta cancelada y stock restaurado');
+    await loadData();
+  };
+
+  const closeDailyCut = (cashDifference: number) => {
+    console.log('Corte:', cashDifference);
     setState(prev => ({
       ...prev,
       sales: [],
@@ -659,6 +690,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         startTableSession,
         endTableSession,
         addProductToTable,
+        removeProductFromTable,
         createPOSSale,
         updateProduct,
         addProduct,
@@ -666,6 +698,43 @@ export function AppProvider({ children }: { children: ReactNode }) {
         updateTable,
         deleteTable,
         closeDailyCut,
+        fetchUsers: async () => {
+          const { data, error } = await supabase.from('users').select('*').order('username');
+          if (error) {
+            console.error('Error fetching users:', error);
+            toast.error('Error al cargar usuarios');
+            return [];
+          }
+          return data as DbUser[];
+        },
+        deleteUser: async (id_user: number) => {
+          const { error } = await supabase.from('users').delete().eq('id_user', id_user);
+          if (error) {
+            console.error('Error deleting user:', error);
+            toast.error('Error al eliminar usuario');
+            return;
+          }
+          toast.success('Usuario eliminado');
+        },
+        updateUserRole: async (id_user: number, id_rol: number) => {
+          const { error } = await supabase.from('users').update({ id_rol }).eq('id_user', id_user);
+          if (error) {
+            console.error('Error updating user role:', error);
+            toast.error('Error al actualizar rol');
+            return;
+          }
+          toast.success('Rol actualizado');
+        },
+        updateUserPassword: async (id_user: number, newPassword: string) => {
+          const { error } = await supabase.from('users').update({ password: newPassword }).eq('id_user', id_user);
+          if (error) {
+            console.error('Error updating password:', error);
+            toast.error('Error al actualizar contraseña');
+            return;
+          }
+          toast.success('Contraseña actualizada correctamente');
+        },
+        cancelSale,
       }}
     >
       {children}

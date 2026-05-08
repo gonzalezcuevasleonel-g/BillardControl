@@ -1,14 +1,19 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Plus, Minus, ShoppingCart, Trash2, DollarSign } from 'lucide-react';
+import { Plus, Minus, ShoppingCart, Trash2, DollarSign, Search, Clock, Printer } from 'lucide-react';
 import { useApp, Product, CartItem } from '../context/AppContext';
 import { Layout } from '../components/Layout';
+import { TicketModal } from '../components/TicketModal';
 import { Button } from '../components/ui/button';
 import { toast } from 'sonner';
+import { Input } from '../components/ui/input';
 
 export function Sales() {
-  const { products, createPOSSale } = useApp();
+  const { products, sales, createPOSSale, cancelSale, currentUserRoleId } = useApp();
+  const isAdmin = Number(currentUserRoleId) === 1;
   const [cart, setCart] = useState<CartItem[]>([]);
+  const [saleSearch, setSaleSearch] = useState('');
+  const [selectedSale, setSelectedSale] = useState<any>(null);
 
   const addToCart = (product: Product) => {
     if (product.stock === 0) {
@@ -42,7 +47,7 @@ export function Sales() {
     }
   };
 
-  const updateQuantity = (productId: string, delta: number) => {
+  const updateQuantity = (productId: number, delta: number) => {
     const product = products.find((p) => p.id === productId);
     if (!product) return;
 
@@ -63,7 +68,7 @@ export function Sales() {
     );
   };
 
-  const removeFromCart = (productId: string) => {
+  const removeFromCart = (productId: number) => {
     setCart(cart.filter((item) => item.productId !== productId));
   };
 
@@ -85,6 +90,10 @@ export function Sales() {
     { id: 'drink', name: 'Bebidas', color: 'blue' },
     { id: 'snack', name: 'Snacks', color: 'orange' },
   ];
+
+  const filteredSales = sales
+    .filter((sale) => sale.id.toString().includes(saleSearch))
+    .sort((a, b) => b.timestamp - a.timestamp);
 
   return (
     <Layout>
@@ -167,8 +176,9 @@ export function Sales() {
             })}
           </div>
 
-          {/* Cart Section */}
-          <div className="lg:col-span-1">
+          {/* Sidebar Section (Cart + History) */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Cart Section */}
             <motion.div
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
@@ -271,8 +281,107 @@ export function Sales() {
                 </>
               )}
             </motion.div>
+
+            {/* Sales History Section */}
+            <motion.div
+              initial={{ opacity: 0, x: 20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: 0.2 }}
+              className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 shadow-xl"
+            >
+              <div className="flex items-center justify-between mb-6">
+                <div className="flex items-center gap-2">
+                  <Clock className="w-5 h-5 text-zinc-400" />
+                  <h2 className="text-xl font-bold text-white">Ventas Recientes</h2>
+                </div>
+              </div>
+
+              <div className="relative mb-4">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                <Input
+                  placeholder="Buscar por folio..."
+                  value={saleSearch}
+                  onChange={(e) => setSaleSearch(e.target.value)}
+                  className="pl-9 bg-zinc-800 border-zinc-700 text-white h-9 text-sm"
+                />
+              </div>
+
+              <div className="space-y-3 max-h-[400px] overflow-y-auto pr-1 custom-scrollbar">
+                {filteredSales.length === 0 ? (
+                  <p className="text-center text-zinc-600 py-8 text-sm italic">
+                    No se encontraron ventas
+                  </p>
+                ) : (
+                  filteredSales.map((sale) => (
+                    <div
+                      key={sale.id}
+                      className="bg-zinc-800/50 rounded-lg p-3 border border-zinc-700/50 hover:border-zinc-600 transition-all"
+                    >
+                      <div className="flex justify-between items-start mb-2">
+                        <div>
+                          <p className="text-xs font-bold text-zinc-500 uppercase tracking-widest">
+                            Folio #{sale.id}
+                          </p>
+                          <p className="text-[10px] text-zinc-600">
+                            {new Date(sale.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                          </p>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <p className="text-sm font-bold text-green-400">
+                            ${sale.total.toFixed(2)}
+                          </p>
+                          <button
+                            onClick={() => setSelectedSale({
+                              folio: sale.id,
+                              items: sale.items,
+                              productsCost: sale.total,
+                              totalCost: sale.total,
+                              endTime: sale.timestamp,
+                              customerName: sale.customer_name || (sale.session_id ? 'Venta de Mesa' : 'Venta Directa')
+                            })}
+                            className="p-1.5 hover:bg-zinc-700 rounded text-zinc-500 hover:text-green-400 transition-all"
+                            title="Imprimir"
+                          >
+                            <Printer className="w-3.5 h-3.5" />
+                          </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => {
+                                if (window.confirm('¿Estás seguro de cancelar esta venta? El stock será restaurado.')) {
+                                  cancelSale(sale.id);
+                                }
+                              }}
+                              className="p-1.5 hover:bg-zinc-700 rounded text-zinc-500 hover:text-red-400 transition-all"
+                              title="Cancelar"
+                            >
+                              <Trash2 className="w-3.5 h-3.5" />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                      <div className="flex flex-wrap gap-1">
+                        {sale.items.map((item, i) => (
+                          <span
+                            key={i}
+                            className="text-[10px] bg-zinc-900 text-zinc-400 px-1.5 py-0.5 rounded border border-zinc-800"
+                          >
+                            {item.quantity}x {item.name}
+                          </span>
+                        ))}
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
           </div>
         </div>
+
+        <TicketModal 
+          isOpen={!!selectedSale}
+          onClose={() => setSelectedSale(null)}
+          data={selectedSale}
+        />
       </div>
     </Layout>
   );
