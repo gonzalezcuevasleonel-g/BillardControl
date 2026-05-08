@@ -64,6 +64,7 @@ interface AppContextType extends AppState {
   startTableSession: (tableId: number) => Promise<void>;
   endTableSession: (tableId: number) => Promise<void>;
   addProductToTable: (tableId: number, product: Product, quantity: number) => void;
+  removeProductFromTable: (tableId: number, productId: number) => void;
   createPOSSale: (items: CartItem[]) => Promise<void>;
   updateProduct: (product: Product) => Promise<void>;
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
@@ -519,6 +520,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }));
   };
 
+  const removeProductFromTable = (tableId: number, productId: number) => {
+    setState(prev => ({
+      ...prev,
+      tables: prev.tables.map(t => {
+        if (t.id !== tableId) return t;
+        return {
+          ...t,
+          products: t.products.filter(p => p.productId !== productId),
+        };
+      }),
+    }));
+  };
+
   const createPOSSale = async (items: CartItem[]) => {
     const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
     const userId = state.currentUserId;
@@ -616,6 +630,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         startTableSession,
         endTableSession,
         addProductToTable,
+        removeProductFromTable,
         createPOSSale,
         updateProduct,
         addProduct,

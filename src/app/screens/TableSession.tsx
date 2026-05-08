@@ -10,6 +10,7 @@ import {
   ArrowLeft,
   CheckCircle,
   Printer,
+  Trash2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Layout } from '../components/Layout';
@@ -19,7 +20,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/
 export function TableSession() {
   const { tableId } = useParams();
   const navigate = useNavigate();
-  const { tables, products, addProductToTable, endTableSession } = useApp();
+  const { tables, products, addProductToTable, removeProductFromTable, endTableSession } = useApp();
   const [showProductModal, setShowProductModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [quantity, setQuantity] = useState(1);
@@ -370,9 +371,18 @@ export function TableSession() {
                           ${item.price} x {item.quantity}
                         </p>
                       </div>
-                      <p className="text-xl font-bold text-green-400">
-                        ${(item.price * item.quantity).toFixed(2)}
-                      </p>
+                      <div className="flex items-center gap-4">
+                        <p className="text-xl font-bold text-green-400">
+                          ${(item.price * item.quantity).toFixed(2)}
+                        </p>
+                        <button
+                          onClick={() => removeProductFromTable(table.id, item.productId)}
+                          className="p-2 text-zinc-500 hover:text-red-400 hover:bg-red-400/10 rounded-lg transition-colors"
+                          title="Eliminar producto"
+                        >
+                          <Trash2 className="w-5 h-5" />
+                        </button>
+                      </div>
                     </div>
                   ))}
                 </div>
