@@ -32,6 +32,7 @@ export interface DbProduct {
   stock: number;
   min_stock: number;
   category: string;
+  cost: number;
   updated_at: string;
 }
 
@@ -50,6 +51,7 @@ export interface DbTableSession {
   end_time: string | null;
   total_time_price: number;
   is_active: boolean;
+  customer_name: string | null;
 }
 
 export interface DbSale {

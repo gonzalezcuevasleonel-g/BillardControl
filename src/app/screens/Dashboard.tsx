@@ -26,12 +26,18 @@ export function Dashboard() {
 
   const activeTables = tables.filter((t) => t.status === 'occupied').length;
   const availableTables = tables.filter((t) => t.status === 'available').length;
-  const productsSoldToday = sales.reduce(
+  const todaySales = sales.filter((sale) => {
+    const saleDate = new Date(sale.timestamp);
+    const today = new Date();
+    return saleDate.toDateString() === today.toDateString();
+  });
+
+  const productsSoldToday = todaySales.reduce(
     (sum, sale) => sum + sale.items.reduce((s, item) => s + item.quantity, 0),
     0
   );
 
-  const recentActivity = [...sales]
+  const recentActivity = [...todaySales]
     .sort((a, b) => b.timestamp - a.timestamp)
     .slice(0, 5);
 

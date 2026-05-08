@@ -12,10 +12,12 @@ import {
   Printer,
   Trash2,
   User,
+  Search,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Layout } from '../components/Layout';
 import { Button } from '../components/ui/button';
+import { Input } from '../components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
 
 export function TableSession() {
@@ -25,6 +27,7 @@ export function TableSession() {
   const [showProductModal, setShowProductModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [quantity, setQuantity] = useState(1);
+  const [productSearch, setProductSearch] = useState("");
 
   // Receipt state — stores a snapshot of the session when "Finalizar" is pressed
   const [receipt, setReceipt] = useState<{
@@ -208,6 +211,10 @@ export function TableSession() {
     0
   );
   const totalCost = tableCost + productsCost;
+
+  const filteredProducts = products.filter(p => 
+    p.name.toLowerCase().includes(productSearch.toLowerCase())
+  );
 
   const handleAddProduct = () => {
     if (selectedProduct && quantity > 0) {
@@ -404,10 +411,21 @@ export function TableSession() {
               transition={{ delay: 0.3 }}
               className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 shadow-xl"
             >
-              <h2 className="text-xl font-bold text-white mb-4">Agregar Productos</h2>
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
+                <h2 className="text-xl font-bold text-white whitespace-nowrap">Agregar Productos</h2>
+                <div className="relative w-full md:max-w-xs">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
+                  <Input 
+                    placeholder="Buscar producto..."
+                    value={productSearch}
+                    onChange={(e) => setProductSearch(e.target.value)}
+                    className="pl-9 bg-zinc-800 border-zinc-700 text-white h-9 text-sm"
+                  />
+                </div>
+              </div>
 
               <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                {products.map((product) => (
+                {filteredProducts.map((product) => (
                   <motion.button
                     key={product.id}
                     whileHover={{ scale: 1.05, y: -4 }}

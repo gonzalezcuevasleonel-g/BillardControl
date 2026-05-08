@@ -10,6 +10,7 @@ export interface Product {
   stock: number;
   min_stock: number;
   category: string;
+  cost: number;
 }
 
 export interface Table {
@@ -89,6 +90,7 @@ function dbProductToProduct(db: DbProduct): Product {
     stock: db.stock,
     min_stock: db.min_stock,
     category: db.category,
+    cost: db.cost || 0,
   };
 }
 
@@ -592,6 +594,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         stock: product.stock,
         min_stock: product.min_stock,
         category: product.category,
+        cost: product.cost,
       })
       .eq('id', product.id);
 
@@ -605,7 +608,14 @@ export function AppProvider({ children }: { children: ReactNode }) {
   const addProduct = async (product: Omit<Product, 'id'>) => {
     const { data, error } = await supabase
       .from('products')
-      .insert(product)
+      .insert({
+        name: product.name,
+        price: product.price,
+        stock: product.stock,
+        min_stock: product.min_stock,
+        category: product.category,
+        cost: product.cost,
+      })
       .select()
       .single();
 
