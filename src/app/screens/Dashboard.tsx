@@ -10,7 +10,7 @@ import {
   Printer,
   Trash2,
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
 import { useApp, Sale } from '../context/AppContext';
 import { Layout } from '../components/Layout';
@@ -22,6 +22,12 @@ export function Dashboard() {
   const { tables, dailyEarnings, sales, products, cancelSale, currentUserRoleId } = useApp();
   const isAdmin = Number(currentUserRoleId) === 1;
   const [selectedSale, setSelectedSale] = useState<any>(null);
+  const [time, setTime] = useState(new Date());
+
+  useEffect(() => {
+    const timer = setInterval(() => setTime(new Date()), 1000);
+    return () => clearInterval(timer);
+  }, []);
 
   const activeTables = tables.filter((t) => t.status === 'occupied').length;
   const availableTables = tables.filter((t) => t.status === 'available').length;
@@ -96,11 +102,51 @@ export function Dashboard() {
     <Layout>
       <div className="p-6 lg:p-8 space-y-8">
         {/* Header */}
-        <div>
-          <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
-          <p className="text-zinc-500">
-            Resumen general de operaciones - {new Date().toLocaleDateString('es-MX')}
-          </p>
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div>
+            <h1 className="text-3xl font-bold text-white mb-2">Dashboard</h1>
+            <p className="text-zinc-500">
+              Resumen general de operaciones - {new Date().toLocaleDateString('es-MX')}
+            </p>
+          </div>
+
+          {/* Neon Clock */}
+          <motion.div
+            initial={{ opacity: 0, scale: 0.9 }}
+            animate={{ opacity: 1, scale: 1 }}
+            className="relative px-6 py-3 bg-black/40 backdrop-blur-md rounded-2xl border border-green-500/30 overflow-hidden group"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-emerald-500/10 to-green-500/10 opacity-50 group-hover:opacity-100 transition-opacity" />
+            
+            {/* Pulsing Glow */}
+            <motion.div
+              animate={{
+                opacity: [0.4, 0.7, 0.4],
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                ease: "easeInOut"
+              }}
+              className="absolute -inset-4 bg-green-500/5 blur-2xl"
+            />
+
+            <div className="relative flex items-center gap-4">
+              <div className="flex flex-col items-center">
+                {/* Date above time */}
+                <span className="text-[10px] uppercase tracking-[0.2em] text-green-400/80 font-bold mb-1">
+                  {time.toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: 'short' }).replace('.', '')}
+                </span>
+                
+                <span className="text-3xl font-black tracking-widest text-green-400 font-mono" style={{ 
+                  textShadow: '0 0 10px rgba(74, 222, 128, 0.5), 0 0 20px rgba(74, 222, 128, 0.3)' 
+                }}>
+                  {time.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
+                </span>
+                <span className="text-[10px] uppercase tracking-[0.3em] text-green-500/60 font-bold">Reloj del Sistema</span>
+              </div>
+            </div>
+          </motion.div>
         </div>
 
         {/* Stats Grid */}
