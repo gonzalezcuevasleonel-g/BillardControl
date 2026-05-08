@@ -8,21 +8,20 @@ import {
   Clock,
   Receipt,
   Printer,
+  Trash2,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import { useApp, Sale } from '../context/AppContext';
 import { Layout } from '../components/Layout';
-import {
-  Dialog,
-  DialogContent,
-} from '../components/ui/dialog';
+import { TicketModal } from '../components/TicketModal';
 import { Button } from '../components/ui/button';
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { tables, dailyEarnings, sales, products } = useApp();
-  const [selectedReceipt, setSelectedReceipt] = useState<Sale | null>(null);
+  const { tables, dailyEarnings, sales, products, cancelSale, currentUserRoleId } = useApp();
+  const isAdmin = Number(currentUserRoleId) === 1;
+  const [selectedSale, setSelectedSale] = useState<any>(null);
 
   const activeTables = tables.filter((t) => t.status === 'occupied').length;
   const availableTables = tables.filter((t) => t.status === 'available').length;
@@ -75,17 +74,6 @@ export function Dashboard() {
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
     return date.toLocaleTimeString('es-MX', {
-      hour: '2-digit',
-      minute: '2-digit',
-    });
-  };
-
-  const formatFullDate = (timestamp: number) => {
-    const date = new Date(timestamp);
-    return date.toLocaleString('es-MX', {
-      day: '2-digit',
-      month: '2-digit',
-      year: 'numeric',
       hour: '2-digit',
       minute: '2-digit',
     });
@@ -266,7 +254,36 @@ export function Dashboard() {
                             {formatDate(sale.timestamp)}
                           </p>
                         </div>
-                        <p className="text-green-400 font-bold">${sale.total.toFixed(2)}</p>
+                        <div className="flex items-center gap-3">
+                          <p className="text-green-400 font-bold">${sale.total.toFixed(2)}</p>
+                          <button
+                            onClick={() => setSelectedSale({
+                              folio: sale.id,
+                              items: sale.items,
+                              productsCost: sale.total,
+                              totalCost: sale.total,
+                              endTime: sale.timestamp,
+                              customerName: sale.customer_name || (sale.session_id ? 'Venta de Mesa' : 'Venta Directa')
+                            })}
+                            className="p-2 hover:bg-zinc-700 rounded-lg text-zinc-500 hover:text-green-400 transition-all"
+                            title="Imprimir Ticket"
+                          >
+                            <Printer className="w-4 h-4" />
+                          </button>
+                          {isAdmin && (
+                            <button
+                              onClick={() => {
+                                if (window.confirm('¿Estás seguro de cancelar esta venta? El stock será restaurado.')) {
+                                  cancelSale(sale.id);
+                                }
+                              }}
+                              className="p-2 hover:bg-zinc-700 rounded-lg text-zinc-500 hover:text-red-400 transition-all"
+                              title="Cancelar Venta"
+                            >
+                              <Trash2 className="w-4 h-4" />
+                            </button>
+                          )}
+                        </div>
                       </div>
                       <div className="text-xs text-zinc-400">
                         {sale.items.map((item, idx) => (
@@ -277,13 +294,6 @@ export function Dashboard() {
                         ))}
                       </div>
                     </div>
-                    <button
-                      onClick={() => setSelectedReceipt(sale)}
-                      className="p-2 rounded-lg bg-purple-500/10 border border-purple-500/20 text-purple-400 hover:bg-purple-500/20 transition-colors flex-shrink-0"
-                      title="Ver recibo"
-                    >
-                      <Receipt className="w-4 h-4" />
-                    </button>
                   </motion.div>
                 ))
               )}
@@ -326,98 +336,12 @@ export function Dashboard() {
         </motion.div>
       </div>
 
-      {/* Receipt Modal */}
-      <Dialog open={!!selectedReceipt} onOpenChange={() => setSelectedReceipt(null)}>
-        <DialogContent className="bg-zinc-950 border-zinc-800 max-w-md w-full p-0 overflow-hidden">
-          {selectedReceipt && (
-            <>
-              {/* Header */}
-              <motion.div
-                initial={{ opacity: 0, y: -20 }}
-                animate={{ opacity: 1, y: 0 }}
-                className="bg-gradient-to-r from-purple-600 to-purple-500 px-6 py-5"
-              >
-                <div className="flex items-center gap-3">
-                  <div className="p-2 bg-white/20 rounded-full">
-                    <Receipt className="w-6 h-6 text-white" />
-                  </div>
-                  <div>
-                    <h2 className="text-xl font-bold text-white">Recibo de Venta</h2>
-                    <p className="text-purple-100 text-sm">
-                      {formatFullDate(selectedReceipt.timestamp)}
-                    </p>
-                  </div>
-                </div>
-              </motion.div>
-
-              {/* Body */}
-              <motion.div
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                transition={{ delay: 0.15 }}
-                className="px-6 py-5 space-y-4"
-              >
-                <div className="flex justify-between items-center">
-                  <span className="text-zinc-400 text-sm">Tipo</span>
-                  <span className="text-white font-medium">
-                    {selectedReceipt.session_id ? 'Venta de Mesa' : 'Venta Directa'}
-                  </span>
-                </div>
-
-                <div className="border-t border-dashed border-zinc-700" />
-
-                <div>
-                  <p className="text-zinc-400 text-xs uppercase tracking-widest mb-3">Productos</p>
-                  <div className="space-y-2">
-                    {selectedReceipt.items.map((item, idx) => (
-                      <motion.div
-                        key={idx}
-                        initial={{ opacity: 0, x: -10 }}
-                        animate={{ opacity: 1, x: 0 }}
-                        transition={{ delay: 0.2 + idx * 0.05 }}
-                        className="flex items-center justify-between"
-                      >
-                        <div className="flex items-center gap-2">
-                          <span className="text-zinc-500 text-sm tabular-nums w-5 text-right">{item.quantity}×</span>
-                          <span className="text-zinc-300 text-sm">{item.name}</span>
-                        </div>
-                        <span className="text-white text-sm font-medium">${(item.price * item.quantity).toFixed(2)}</span>
-                      </motion.div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="border-t border-dashed border-zinc-700" />
-
-                {/* Total */}
-                <div className="bg-gradient-to-r from-purple-500/10 to-purple-600/10 border border-purple-500/30 rounded-xl p-4 flex items-center justify-between">
-                  <span className="text-white font-bold text-lg">TOTAL</span>
-                  <span className="text-3xl font-bold text-purple-400">${selectedReceipt.total.toFixed(2)}</span>
-                </div>
-              </motion.div>
-
-              {/* Footer */}
-              <div className="px-6 pb-6">
-                <Button
-                  onClick={() => window.print()}
-                  variant="outline"
-                  className="w-full mb-3 bg-zinc-800 hover:bg-zinc-700 text-white border-zinc-700"
-                >
-                  <Printer className="w-4 h-4 mr-2" />
-                  Imprimir
-                </Button>
-                <Button
-                  onClick={() => setSelectedReceipt(null)}
-                  className="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold"
-                >
-                  Cerrar
-                </Button>
-              </div>
-            </>
-          )}
-        </DialogContent>
-      </Dialog>
+      {/* Ticket Modal */}
+      <TicketModal 
+        isOpen={!!selectedSale}
+        onClose={() => setSelectedSale(null)}
+        data={selectedSale}
+      />
     </Layout>
   );
 }
-

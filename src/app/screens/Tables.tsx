@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Circle, Play, Square, Clock, Plus } from 'lucide-react';
+import { Circle, Play, Square, Clock, Plus, DollarSign } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Layout } from '../components/Layout';
 import { Button } from '../components/ui/button';
@@ -20,7 +20,7 @@ function getTypeByRate(rate: number) {
 }
 
 export function Tables() {
-  const { tables, startTableSession } = useApp();
+  const { tables, startTableSession, currentUserRoleId } = useApp();
   const navigate = useNavigate();
 
   const formatTime = (seconds: number) => {
@@ -62,15 +62,17 @@ export function Tables() {
         <div>
           <h1 className="text-3xl font-bold text-white mb-2">Gestión de Mesas</h1>
           <p className="text-zinc-500">Administra las sesiones de billar</p>
-          <div className="flex">
-            <Button
-              onClick={() => navigate('/tables/edit')}
-              className="ml-auto bg-green-500 hover:bg-green-600 text-black font-semibold shadow-lg shadow-green-500/30"
-            >
-              <Pencil className="w-4 h-4 mr-2" />
-              Editar Mesas
-            </Button>
-          </div>
+          {Number(currentUserRoleId) === 1 && (
+            <div className="flex">
+              <Button
+                onClick={() => navigate('/tables/edit')}
+                className="ml-auto bg-green-500 hover:bg-green-600 text-black font-semibold shadow-lg shadow-green-500/30"
+              >
+                <Pencil className="w-4 h-4 mr-2" />
+                Editar Mesas
+              </Button>
+            </div>
+          )}
         </div>
 
         {/* Tables Grid */}
@@ -141,6 +143,17 @@ export function Tables() {
                     </div>
                   </div>
                 </div>
+
+                {/* Price Info for available tables */}
+                {table.status === 'available' && (
+                  <div className="mb-4 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700/50 flex items-center justify-between">
+                    <div className="flex items-center gap-2">
+                      <DollarSign className="w-4 h-4 text-green-400" />
+                      <span className="text-sm text-zinc-400">Precio por hora</span>
+                    </div>
+                    <p className="text-xl font-bold text-white">${table.hourly_rate}</p>
+                  </div>
+                )}
 
                 {/* Timer for occupied tables */}
                 {table.status === 'occupied' && (

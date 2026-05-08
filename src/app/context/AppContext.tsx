@@ -39,6 +39,7 @@ export interface Sale {
   session_id?: number | null;
   total: number;
   items: CartItem[];
+  customer_name?: string | null;
 }
 
 interface UserSession {
@@ -78,6 +79,7 @@ interface AppContextType extends AppState {
   deleteUser: (id_user: number) => Promise<void>;
   updateUserRole: (id_user: number, id_rol: number) => Promise<void>;
   updateUserPassword: (id_user: number, newPassword: string) => Promise<void>;
+  cancelSale: (saleId: number) => Promise<void>;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -111,13 +113,14 @@ function dbTableToTable(db: DbTable, session?: DbTableSession): Table {
   };
 }
 
-function dbSaleToSale(db: DbSale, items: DbSaleItem[] = []): Sale {
+function dbSaleToSale(db: any, items: DbSaleItem[] = []): Sale {
   return {
     id: db.id_sale,
     timestamp: new Date(db.created_at).getTime(),
     user_id: db.user_id,
     session_id: db.session_id || undefined,
     total: db.total_sale,
+    customer_name: db.table_sessions?.customer_name || null,
     items: items.map(i => ({
       productId: i.product_id ?? 0,
       name: i.product_name,
@@ -169,10 +172,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const { data: salesData, error: salesError } = await supabase
         .from('sales')
-        .select(`
-          *,
-          sale_items (*)
-        `)
+        .select('*, sale_items(*), table_sessions(customer_name)')
         .order('created_at', { ascending: false });
 
       if (salesError) throw salesError;
@@ -626,6 +626,35 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
+  const cancelSale = async (saleId: number) => {
+    const sale = state.sales.find(s => s.id === saleId);
+    if (!sale) return;
+
+    // 1. Restaurar stock de productos
+    for (const item of sale.items) {
+      const product = state.products.find(p => p.id === item.productId);
+      if (product) {
+        const newStock = product.stock + item.quantity;
+        await supabase.from('products').update({ stock: newStock }).eq('id', item.productId);
+      }
+    }
+
+    // 2. Eliminar la venta
+    const { error } = await supabase
+      .from('sales')
+      .delete()
+      .eq('id_sale', saleId);
+
+    if (error) {
+      console.error('Error cancelling sale:', error);
+      toast.error('Error al cancelar venta: ' + error.message);
+      return;
+    }
+
+    toast.success('Venta cancelada y stock restaurado');
+    await loadData();
+  };
+
   const closeDailyCut = (cashDifference: number) => {
     console.log('Corte:', cashDifference);
     setState(prev => ({
@@ -688,6 +717,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
           }
           toast.success('Contraseña actualizada correctamente');
         },
+        cancelSale,
       }}
     >
       {children}
