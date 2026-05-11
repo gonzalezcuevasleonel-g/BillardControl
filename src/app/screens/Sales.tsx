@@ -14,6 +14,7 @@ export function Sales() {
   const [cart, setCart] = useState<CartItem[]>([]);
   const [saleSearch, setSaleSearch] = useState('');
   const [selectedSale, setSelectedSale] = useState<any>(null);
+  const [customerName, setCustomerName] = useState('');
 
   const addToCart = (product: Product) => {
     if (product.stock === 0) {
@@ -80,8 +81,9 @@ export function Sales() {
       return;
     }
 
-    await createPOSSale(cart);
+    await createPOSSale(cart, customerName);
     setCart([]);
+    setCustomerName('');
     toast.success('Venta registrada exitosamente');
   };
 
@@ -91,7 +93,7 @@ export function Sales() {
     { id: 'snack', name: 'Snacks', color: 'orange' },
   ];
 
-  const filteredSales = sales
+  const filteredSales = (sales ?? [])
     .filter((sale) => sale.id.toString().includes(saleSearch))
     .sort((a, b) => b.timestamp - a.timestamp);
 
@@ -268,6 +270,22 @@ export function Sales() {
                         ${total.toFixed(2)}
                       </span>
                     </div>
+                  </div>
+
+                  {/* Customer Name Input */}
+                  <div className="mb-4">
+                    <label className="text-xs text-zinc-500 uppercase tracking-widest font-bold mb-2 block">
+                      Nombre del Cliente
+                    </label>
+                    <Input
+                      placeholder="Ej. Juan Pérez (Opcional)"
+                      value={customerName}
+                      onChange={(e) => setCustomerName(e.target.value)}
+                      className="bg-zinc-800 border-zinc-700 text-white"
+                    />
+                    <p className="text-[10px] text-zinc-600 mt-1 italic">
+                      Default: Venta al público
+                    </p>
                   </div>
 
                   {/* Checkout Button */}

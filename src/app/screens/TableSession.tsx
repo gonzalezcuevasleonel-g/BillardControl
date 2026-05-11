@@ -102,9 +102,9 @@ export function TableSession() {
     p.name.toLowerCase().includes(productSearch.toLowerCase())
   );
 
-  const handleAddProduct = () => {
+  const handleAddProduct = async () => {
     if (selectedProduct && quantity > 0) {
-  addProductToTable(table.id, selectedProduct, quantity);
+      await addProductToTable(table.id, selectedProduct, quantity);
       setShowProductModal(false);
       setQuantity(1);
       setSelectedProduct(null);

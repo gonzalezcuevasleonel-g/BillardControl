@@ -16,6 +16,7 @@ import {
 } from 'lucide-react';
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
+import { toast } from 'sonner';
 
 interface LayoutProps {
   children: ReactNode;
@@ -33,7 +34,7 @@ const navItems = [
 export function Layout({ children }: LayoutProps) {
   const location = useLocation();
   const navigate = useNavigate();
-  const { logout, currentUser, currentUserRoleId } = useApp();
+  const { logout, currentUser, currentUserRoleId, todaySales } = useApp();
 
   const getRoleLabel = (roleId: number | null) => {
     switch (roleId) {
@@ -48,6 +49,10 @@ export function Layout({ children }: LayoutProps) {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const handleLogout = () => {
+    if (todaySales.length > 0) {
+      toast.error('No puedes cerrar sesión sin haber cerrado tu día (corte de caja)');
+      return;
+    }
     logout();
     navigate('/');
   };

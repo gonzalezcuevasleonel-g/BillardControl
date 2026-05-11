@@ -30,18 +30,17 @@ export function Dashboard() {
     return () => clearInterval(timer);
   }, []);
 
-  const activeTables = tables.filter((t) => t.status === 'occupied').length;
-  const availableTables = tables.filter((t) => t.status === 'available').length;
+  const activeTables = (tables ?? []).filter((t) => t.status === 'occupied').length;
+  const availableTables = (tables ?? []).filter((t) => t.status === 'available').length;
 
-  const productsSoldToday = todaySales.reduce(
-    (sum, sale) => sum + sale.items.reduce((s, item) => s + item.quantity, 0),
+  const productsSoldToday = (todaySales ?? []).reduce(
+    (sum, sale) => sum + (sale.items ?? []).reduce((s, item) => s + item.quantity, 0),
     0
   );
 
-  const recentActivity = [...todaySales]
+  const recentActivity = [...(todaySales ?? [])]
     .sort((a, b) => b.timestamp - a.timestamp)
     .slice(0, 5);
-
   const statsCards = [
     {
       title: 'Ganancias Hoy',
@@ -72,6 +71,8 @@ export function Dashboard() {
       glow: 'shadow-orange-500/20',
     },
   ];
+
+  const visibleStatsCards = isAdmin ? statsCards : statsCards.filter(s => s.title !== 'Ganancias Hoy');
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -113,7 +114,7 @@ export function Dashboard() {
             className="relative px-6 py-3 bg-black/40 backdrop-blur-md rounded-2xl border border-green-500/30 overflow-hidden group"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-emerald-500/10 to-green-500/10 opacity-50 group-hover:opacity-100 transition-opacity" />
-            
+
             {/* Pulsing Glow */}
             <motion.div
               animate={{
@@ -133,9 +134,9 @@ export function Dashboard() {
                 <span className="text-[10px] uppercase tracking-[0.2em] text-green-400/80 font-bold mb-1">
                   {time.toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: 'short' }).replace('.', '')}
                 </span>
-                
-                <span className="text-3xl font-black tracking-widest text-green-400 font-mono" style={{ 
-                  textShadow: '0 0 10px rgba(74, 222, 128, 0.5), 0 0 20px rgba(74, 222, 128, 0.3)' 
+
+                <span className="text-3xl font-black tracking-widest text-green-400 font-mono" style={{
+                  textShadow: '0 0 10px rgba(74, 222, 128, 0.5), 0 0 20px rgba(74, 222, 128, 0.3)'
                 }}>
                   {time.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
                 </span>
@@ -147,7 +148,7 @@ export function Dashboard() {
 
         {/* Stats Grid */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {statsCards.map((stat, index) => {
+          {visibleStatsCards.map((stat, index) => {
             const Icon = stat.icon;
             return (
               <motion.div
@@ -213,8 +214,8 @@ export function Dashboard() {
                     ${table.status === 'occupied'
                       ? 'bg-green-500/10 border-green-500/50 shadow-lg shadow-green-500/20'
                       : table.status === 'maintenance'
-                      ? 'bg-zinc-900 border-zinc-800 opacity-50'
-                      : 'bg-zinc-800 border-zinc-700'
+                        ? 'bg-zinc-900 border-zinc-800 opacity-50'
+                        : 'bg-zinc-800 border-zinc-700'
                     }
                   `}
                 >
@@ -303,12 +304,12 @@ export function Dashboard() {
                           </p>
                         </div>
                         <div className="flex items-center gap-3">
-                          <p className="text-green-400 font-bold">${sale.total.toFixed(2)}</p>
+                          <p className="text-green-400 font-bold">{isAdmin ? `$${sale.total.toFixed(2)}` : '***'}</p>
                           <button
                             onClick={() => {
                               const tableCost = sale.total_time_price || 0;
                               const productsCost = sale.total - tableCost;
-                              
+
                               let usageTime = undefined;
                               if (sale.start_time && sale.end_time) {
                                 const diff = Math.floor((new Date(sale.end_time).getTime() - new Date(sale.start_time).getTime()) / 1000);
@@ -401,7 +402,7 @@ export function Dashboard() {
       </div>
 
       {/* Ticket Modal */}
-      <TicketModal 
+      <TicketModal
         isOpen={!!selectedSale}
         onClose={() => setSelectedSale(null)}
         data={selectedSale}
