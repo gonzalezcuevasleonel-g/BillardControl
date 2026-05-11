@@ -173,15 +173,28 @@ export function Users() {
                       className="group hover:bg-zinc-800/30 transition-colors"
                     >
                       <td className="px-6 py-4">
-                        <div className="flex items-center gap-3">
-                          <div className={`p-2 rounded-full ${user.id_rol === 1 ? 'bg-purple-500/10 text-purple-400' : 'bg-blue-500/10 text-blue-400'}`}>
+                          <div className={`p-2 rounded-full relative ${user.id_rol === 1 ? 'bg-purple-500/10 text-purple-400' : 'bg-blue-500/10 text-blue-400'}`}>
                             <User className="w-5 h-5" />
+                            {user.is_online && (
+                              <span className="absolute bottom-0 right-0 w-3 h-3 bg-green-500 border-2 border-zinc-900 rounded-full" />
+                            )}
                           </div>
                           <div>
-                            <p className="text-white font-medium">{user.username}</p>
-                            <p className="text-xs text-zinc-500">ID: {user.id_user}</p>
+                            <div className="flex items-center gap-2">
+                              <p className="text-white font-medium">{user.username}</p>
+                              {user.is_online && (
+                                <span className="text-[10px] bg-green-500/10 text-green-400 px-1.5 py-0.5 rounded border border-green-500/20 font-bold uppercase tracking-wider animate-pulse">
+                                  En línea
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-zinc-500">
+                              {user.last_login 
+                                ? `Último acceso: ${new Date(user.last_login).toLocaleString()}`
+                                : `ID: ${user.id_user}`
+                              }
+                            </p>
                           </div>
-                        </div>
                       </td>
                       <td className="px-6 py-4">
                         <div className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-bold ${

@@ -1,7 +1,7 @@
 import { createContext, useContext, useState, useEffect, ReactNode, useCallback } from 'react';
 import { toast } from 'sonner';
 import { supabase, loginUser } from '../../utils/supabase';
-import type { DbProduct, DbTable, DbTableSession, DbSale, DbSaleItem, DbUser } from '../../utils/supabase';
+import type { DbProduct, DbTable, DbTableSession, DbSale, DbSaleItem, DbUser, DbSessionItem } from '../../utils/supabase';
 
 export interface Product {
   id: number;
@@ -45,6 +45,7 @@ export interface Sale {
   start_time?: string;
   end_time?: string;
   total_time_price?: number;
+  seller_name?: string;
 }
 
 interface UserSession {
@@ -72,9 +73,9 @@ interface AppContextType extends AppState {
   register: (username: string, password: string) => Promise<{ success: boolean; error?: string }>;
   startTableSession: (tableId: number, customerName?: string) => Promise<void>;
   endTableSession: (tableId: number) => Promise<void>;
-  addProductToTable: (tableId: number, product: Product, quantity: number) => void;
-  removeProductFromTable: (tableId: number, productId: number) => void;
-  createPOSSale: (items: CartItem[]) => Promise<void>;
+  addProductToTable: (tableId: number, product: Product, quantity: number) => Promise<void>;
+  removeProductFromTable: (tableId: number, productId: number) => Promise<void>;
+  createPOSSale: (items: CartItem[], customerName?: string) => Promise<void>;
   updateProduct: (product: Product) => Promise<void>;
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
   addTable: (name: string, hourly_rate?: number) => Promise<void>;
@@ -103,9 +104,16 @@ function dbProductToProduct(db: DbProduct): Product {
   };
 }
 
-function dbTableToTable(db: DbTable, session?: DbTableSession): Table {
+function dbTableToTable(db: DbTable, session?: DbTableSession & { session_items?: DbSessionItem[] }): Table {
   const startTime = session?.start_time ? new Date(session.start_time).getTime() : null;
   const elapsedSeconds = startTime ? Math.floor((Date.now() - startTime) / 1000) : 0;
+
+  const products: CartItem[] = (session?.session_items || []).map(item => ({
+    productId: item.product_id || 0,
+    name: item.product_name,
+    price: item.unit_price,
+    quantity: item.quantity
+  }));
 
   return {
     id: db.id,
@@ -114,7 +122,7 @@ function dbTableToTable(db: DbTable, session?: DbTableSession): Table {
     status: db.status,
     startTime,
     elapsedSeconds,
-    products: [],
+    products,
     sessionId: session?.id || null,
     customerName: session?.customer_name || null,
   };
@@ -132,6 +140,7 @@ function dbSaleToSale(db: any, items: DbSaleItem[] = []): Sale {
     start_time: db.table_sessions?.start_time || undefined,
     end_time: db.table_sessions?.end_time || undefined,
     total_time_price: db.table_sessions?.total_time_price || undefined,
+    seller_name: db.users?.username || 'Sistema',
     items: items.map(i => ({
       productId: i.product_id ?? 0,
       name: i.product_name,
@@ -184,21 +193,21 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const { data: sessionsData, error: sessionsError } = await supabase
         .from('table_sessions')
-        .select('*')
+        .select('*, session_items(*)')
         .eq('is_active', true);
 
       if (sessionsError) throw sessionsError;
 
       const { data: salesData, error: salesError } = await supabase
         .from('sales')
-        .select('*, sale_items(*), table_sessions(*, tables(name))')
+        .select('*, sale_items(*), table_sessions(*, tables(name)), users(username)')
         .order('created_at', { ascending: false });
 
       if (salesError) throw salesError;
 
       const products = (productsData || []).map(dbProductToProduct);
 
-      const activeSessionsMap = new Map<number, DbTableSession>();
+      const activeSessionsMap = new Map<number, DbTableSession & { session_items?: DbSessionItem[] }>();
       (sessionsData || []).forEach(s => activeSessionsMap.set(s.table_id, s));
 
       const tables = (tablesData || []).map(t => {
@@ -288,6 +297,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       };
       localStorage.setItem('billarUserSession', JSON.stringify(userSession));
 
+      // Mark user as online
+      await supabase
+        .from('users')
+        .update({ is_online: true, last_login: new Date().toISOString() })
+        .eq('id_user', user.id_user);
+
       setState(prev => ({
         ...prev,
         isAuthenticated: true,
@@ -305,12 +320,19 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = (): void => {
+  const logout = async () => {
+    if (state.currentUserId) {
+      await supabase
+        .from('users')
+        .update({ is_online: false })
+        .eq('id_user', state.currentUserId);
+    }
     localStorage.removeItem('billarUserSession');
     setState({
       tables: [],
       products: [],
       sales: [],
+      todaySales: [],
       dailyEarnings: 0,
       isAuthenticated: false,
       currentUser: null,
@@ -524,49 +546,60 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
     await supabase.from('tables').update({ status: 'available' }).eq('id', tableId);
 
+    // Limpiar items de la sesión activa ya que ahora están en sale_items
+    await supabase.from('session_items').delete().eq('session_id', table.sessionId);
+
     toast.success('Sesión finalizada');
     await loadData();
   };
 
-  const addProductToTable = (tableId: number, product: Product, quantity: number) => {
-    setState(prev => ({
-      ...prev,
-      tables: prev.tables.map(t => {
-        if (t.id !== tableId) return t;
-        const existing = t.products.find(p => p.productId === product.id);
-        return {
-          ...t,
-          products: existing
-            ? t.products.map(p =>
-                p.productId === product.id
-                  ? { ...p, quantity: p.quantity + quantity }
-                  : p
-              )
-            : [...t.products, {
-                productId: product.id,
-                name: product.name,
-                price: product.price,
-                quantity,
-              }],
-        };
-      }),
-    }));
+  const addProductToTable = async (tableId: number, product: Product, quantity: number) => {
+    const table = state.tables.find(t => t.id === tableId);
+    if (!table || !table.sessionId) return;
+
+    const existing = table.products.find(p => p.productId === product.id);
+    const newQuantity = existing ? existing.quantity + quantity : quantity;
+
+    // Persistir en Supabase (Usar upsert para manejar incrementos)
+    const { error } = await supabase
+      .from('session_items')
+      .upsert({
+        session_id: table.sessionId,
+        product_id: product.id,
+        product_name: product.name,
+        unit_price: product.price,
+        quantity: newQuantity,
+      }, { onConflict: 'session_id,product_id' });
+
+    if (error) {
+      console.error('Error adding product to session:', error);
+      toast.error('Error al guardar producto: ' + error.message);
+      return;
+    }
+
+    await loadData();
   };
 
-  const removeProductFromTable = (tableId: number, productId: number) => {
-    setState(prev => ({
-      ...prev,
-      tables: prev.tables.map(t => {
-        if (t.id !== tableId) return t;
-        return {
-          ...t,
-          products: t.products.filter(p => p.productId !== productId),
-        };
-      }),
-    }));
+  const removeProductFromTable = async (tableId: number, productId: number) => {
+    const table = state.tables.find(t => t.id === tableId);
+    if (!table || !table.sessionId) return;
+
+    const { error } = await supabase
+      .from('session_items')
+      .delete()
+      .eq('session_id', table.sessionId)
+      .eq('product_id', productId);
+
+    if (error) {
+      console.error('Error removing product from session:', error);
+      toast.error('Error al eliminar producto');
+      return;
+    }
+
+    await loadData();
   };
 
-  const createPOSSale = async (items: CartItem[]) => {
+  const createPOSSale = async (items: CartItem[], customerName?: string) => {
     const total = items.reduce((sum, i) => sum + i.price * i.quantity, 0);
     const userId = state.currentUserId;
     if (!userId) return;
@@ -576,6 +609,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       .insert({
         user_id: userId,
         total_sale: total,
+        customer_name: customerName || 'Venta al público',
       })
       .select()
       .single();

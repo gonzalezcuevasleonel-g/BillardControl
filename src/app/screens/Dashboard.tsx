@@ -10,6 +10,7 @@ import {
   Printer,
   Trash2,
   Wrench,
+  Users as UsersIcon,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
@@ -66,28 +67,42 @@ function getTableType(hourlyRate: number) {
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { tables, dailyEarnings, todaySales, products, cancelSale, currentUserRoleId } = useApp();
+  const { tables, dailyEarnings, todaySales, products, cancelSale, currentUserRoleId, fetchUsers } = useApp();
   const isAdmin = Number(currentUserRoleId) === 1;
   const [selectedSale, setSelectedSale] = useState<any>(null);
   const [time, setTime] = useState(new Date());
+  const [staff, setStaff] = useState<any[]>([]);
 
   useEffect(() => {
     const timer = setInterval(() => setTime(new Date()), 1000);
+
+    if (isAdmin) {
+      const loadStaff = async () => {
+        const users = await fetchUsers();
+        setStaff(users);
+      };
+      loadStaff();
+      const staffTimer = setInterval(loadStaff, 30000); // Update every 30s
+      return () => {
+        clearInterval(timer);
+        clearInterval(staffTimer);
+      };
+    }
+
     return () => clearInterval(timer);
-  }, []);
+  }, [isAdmin]);
 
-  const activeTables = tables.filter((t) => t.status === 'occupied').length;
-  const availableTables = tables.filter((t) => t.status === 'available').length;
+  const activeTables = (tables ?? []).filter((t) => t.status === 'occupied').length;
+  const availableTables = (tables ?? []).filter((t) => t.status === 'available').length;
 
-  const productsSoldToday = todaySales.reduce(
-    (sum, sale) => sum + sale.items.reduce((s, item) => s + item.quantity, 0),
+  const productsSoldToday = (todaySales ?? []).reduce(
+    (sum, sale) => sum + (sale.items ?? []).reduce((s, item) => s + item.quantity, 0),
     0
   );
 
-  const recentActivity = [...todaySales]
+  const recentActivity = [...(todaySales ?? [])]
     .sort((a, b) => b.timestamp - a.timestamp)
     .slice(0, 5);
-
   const statsCards = [
     {
       title: 'Ganancias Hoy',
@@ -118,6 +133,8 @@ export function Dashboard() {
       glow: 'shadow-orange-500/20',
     },
   ];
+
+  const visibleStatsCards = isAdmin ? statsCards : statsCards.filter(s => s.title !== 'Ganancias Hoy');
 
   const formatDate = (timestamp: number) => {
     const date = new Date(timestamp);
@@ -159,7 +176,7 @@ export function Dashboard() {
             className="relative px-6 py-3 bg-black/40 backdrop-blur-md rounded-2xl border border-green-500/30 overflow-hidden group"
           >
             <div className="absolute inset-0 bg-gradient-to-r from-green-500/10 via-emerald-500/10 to-green-500/10 opacity-50 group-hover:opacity-100 transition-opacity" />
-            
+
             {/* Pulsing Glow */}
             <motion.div
               animate={{
@@ -179,9 +196,9 @@ export function Dashboard() {
                 <span className="text-[10px] uppercase tracking-[0.2em] text-green-400/80 font-bold mb-1">
                   {time.toLocaleDateString('es-MX', { weekday: 'short', day: '2-digit', month: 'short' }).replace('.', '')}
                 </span>
-                
-                <span className="text-3xl font-black tracking-widest text-green-400 font-mono" style={{ 
-                  textShadow: '0 0 10px rgba(74, 222, 128, 0.5), 0 0 20px rgba(74, 222, 128, 0.3)' 
+
+                <span className="text-3xl font-black tracking-widest text-green-400 font-mono" style={{
+                  textShadow: '0 0 10px rgba(74, 222, 128, 0.5), 0 0 20px rgba(74, 222, 128, 0.3)'
                 }}>
                   {time.toLocaleTimeString('es-MX', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true })}
                 </span>
@@ -192,7 +209,7 @@ export function Dashboard() {
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-          {statsCards.map((stat, index) => {
+          {visibleStatsCards.map((stat, index) => {
             const Icon = stat.icon;
             return (
               <motion.div
@@ -254,8 +271,8 @@ export function Dashboard() {
                     ${table.status === 'occupied'
                       ? 'bg-green-500/10 border-green-500/50 shadow-lg shadow-green-500/20'
                       : table.status === 'maintenance'
-                      ? 'bg-zinc-900 border-zinc-800 opacity-50'
-                      : 'bg-zinc-800 border-zinc-700'
+                        ? 'bg-zinc-900 border-zinc-800 opacity-50'
+                        : 'bg-zinc-800 border-zinc-700'
                     }
                   `}
                 >
@@ -333,12 +350,12 @@ export function Dashboard() {
                           <p className="text-xs text-zinc-500">{formatFullDate(sale.timestamp)}</p>
                         </div>
                         <div className="flex items-center gap-3">
-                          <p className="text-green-400 font-bold">${sale.total.toFixed(2)}</p>
+                          <p className="text-green-400 font-bold">{isAdmin ? `$${sale.total.toFixed(2)}` : '***'}</p>
                           <button
                             onClick={() => {
                               const tableCost = sale.total_time_price || 0;
                               const productsCost = sale.total - tableCost;
-                              
+
                               let usageTime = undefined;
                               if (sale.start_time && sale.end_time) {
                                 const diff = Math.floor((new Date(sale.end_time).getTime() - new Date(sale.start_time).getTime()) / 1000);
@@ -356,7 +373,8 @@ export function Dashboard() {
                                 totalCost: sale.total,
                                 endTime: sale.timestamp,
                                 usageTime: usageTime,
-                                customerName: sale.customer_name || (sale.session_id ? (sale.table_name || 'Venta de Mesa') : 'Venta Directa')
+                                customerName: sale.customer_name || (sale.session_id ? (sale.table_name || 'Venta de Mesa') : 'Venta Directa'),
+                                sellerName: sale.seller_name
                               });
                             }}
                             className="p-2 hover:bg-zinc-700 rounded-lg text-zinc-500 hover:text-green-400 transition-all"
@@ -395,40 +413,83 @@ export function Dashboard() {
           </motion.div>
         </div>
 
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.6 }}
-          className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 shadow-xl"
-        >
-          <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
-            <ShoppingBag className="w-5 h-5 text-orange-400" />
-            Alertas de Inventario
-          </h2>
+        {/* Low Stock Alert & Staff Monitor */}
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Inventory Alerts */}
+          <motion.div
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.6 }}
+            className={`bg-zinc-900 rounded-xl border border-zinc-800 p-6 shadow-xl ${isAdmin ? 'lg:col-span-2' : 'lg:col-span-3'}`}
+          >
+            <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+              <ShoppingBag className="w-5 h-5 text-orange-400" />
+              Alertas de Inventario
+            </h2>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-            {products
-              .filter((p) => p.stock <= p.min_stock)
-              .map((product) => (
-                <div
-                  key={product.id}
-                  className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4"
-                >
-                  <p className="text-white font-medium">{product.name}</p>
-                  <p className="text-orange-400 text-sm mt-1">Stock bajo: {product.stock} unidades</p>
-                </div>
-              ))}
-            {products.filter((p) => p.stock <= p.min_stock).length === 0 && (
-              <p className="text-zinc-500 text-sm col-span-full text-center py-4">
-                Todos los productos tienen stock suficiente
-              </p>
-            )}
-          </div>
-        </motion.div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              {products
+                .filter((p) => p.stock <= p.min_stock)
+                .map((product) => (
+                  <div
+                    key={product.id}
+                    className="bg-orange-500/10 border border-orange-500/20 rounded-lg p-4"
+                  >
+                    <p className="text-white font-medium">{product.name}</p>
+                    <p className="text-orange-400 text-sm mt-1">
+                      Stock bajo: {product.stock} unidades
+                    </p>
+                  </div>
+                ))}
+              {products.filter((p) => p.stock <= p.min_stock).length === 0 && (
+                <p className="text-zinc-500 text-sm col-span-full text-center py-4">
+                  Todos los productos tienen stock suficiente
+                </p>
+              )}
+            </div>
+          </motion.div>
+
+          {/* Staff Monitor (Admin Only) */}
+          {isAdmin && (
+            <motion.div
+              initial={{ opacity: 0, y: 20 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.7 }}
+              className="bg-zinc-900 rounded-xl border border-zinc-800 p-6 shadow-xl"
+            >
+              <h2 className="text-xl font-bold text-white mb-4 flex items-center gap-2">
+                <UsersIcon className="w-5 h-5 text-blue-400" />
+                Personal Activo
+              </h2>
+              <div className="space-y-4">
+                {staff.filter(u => u.is_online).length === 0 ? (
+                  <p className="text-zinc-500 text-sm italic text-center py-4">No hay personal en línea</p>
+                ) : (
+                  staff.filter(u => u.is_online).map(u => (
+                    <div key={u.id_user} className="flex items-center justify-between p-3 bg-zinc-800/50 rounded-lg border border-zinc-700/50">
+                      <div className="flex items-center gap-3">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse" />
+                        <div>
+                          <p className="text-white text-sm font-medium">{u.username}</p>
+                          <p className="text-[10px] text-zinc-500 uppercase tracking-wider">
+                            {u.id_rol === 1 ? 'Administrador' : 'Empleado'}
+                          </p>
+                        </div>
+                      </div>
+                      <span className="text-[10px] text-zinc-500">
+                        Entró {new Date(u.last_login).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                      </span>
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          )}
+        </div>
       </div>
 
       {/* Ticket Modal */}
-      <TicketModal 
+      <TicketModal
         isOpen={!!selectedSale}
         onClose={() => setSelectedSale(null)}
         data={selectedSale}

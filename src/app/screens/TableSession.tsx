@@ -24,7 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/
 export function TableSession() {
   const { tableId } = useParams();
   const navigate = useNavigate();
-  const { tables, products, addProductToTable, removeProductFromTable, endTableSession } = useApp();
+  const { tables, products, addProductToTable, removeProductFromTable, endTableSession, currentUser } = useApp();
   const [showProductModal, setShowProductModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [quantity, setQuantity] = useState(1);
@@ -42,6 +42,7 @@ export function TableSession() {
     endTime: Date;
     customerName: string;
     usageTime: string;
+    sellerName?: string;
   } | null>(null);
 
   const table = tables.find((t) => t.id === Number(tableId));
@@ -70,7 +71,8 @@ export function TableSession() {
             productsCost: receipt.productsCost,
             totalCost: receipt.totalCost,
             endTime: receipt.endTime,
-            usageTime: receipt.usageTime
+            usageTime: receipt.usageTime,
+            sellerName: receipt.sellerName
           }}
         />
       </Layout>
@@ -98,13 +100,13 @@ export function TableSession() {
   );
   const totalCost = tableCost + productsCost;
 
-  const filteredProducts = products.filter(p => 
+  const filteredProducts = products.filter(p =>
     p.name.toLowerCase().includes(productSearch.toLowerCase())
   );
 
-  const handleAddProduct = () => {
+  const handleAddProduct = async () => {
     if (selectedProduct && quantity > 0) {
-      addProductToTable(table.id, selectedProduct, quantity);
+      await addProductToTable(table.id, selectedProduct, quantity);
       setShowProductModal(false);
       setQuantity(1);
       setSelectedProduct(null);
@@ -128,10 +130,11 @@ export function TableSession() {
       endTime: new Date(),
       customerName: table.customerName || "Cliente",
       usageTime: formatTime(table.elapsedSeconds),
+      sellerName: currentUser || 'Sistema',
     });
 
     // 2. End the session
-  endTableSession(table.id);
+    endTableSession(table.id);
   };
 
   const openProductModal = (product: any) => {
@@ -302,7 +305,7 @@ export function TableSession() {
                 <h2 className="text-xl font-bold text-white whitespace-nowrap">Agregar Productos</h2>
                 <div className="relative w-full md:max-w-xs">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-zinc-500" />
-                  <Input 
+                  <Input
                     placeholder="Buscar producto..."
                     value={productSearch}
                     onChange={(e) => setProductSearch(e.target.value)}
@@ -321,10 +324,9 @@ export function TableSession() {
                     disabled={product.stock === 0}
                     className={`
                       p-4 rounded-lg border-2 transition-all text-left
-                      ${
-                        product.stock === 0
-                          ? 'bg-zinc-800 border-zinc-700 opacity-50 cursor-not-allowed'
-                          : 'bg-zinc-800 border-zinc-700 hover:border-green-500/50 hover:shadow-lg hover:shadow-green-500/20'
+                      ${product.stock === 0
+                        ? 'bg-zinc-800 border-zinc-700 opacity-50 cursor-not-allowed'
+                        : 'bg-zinc-800 border-zinc-700 hover:border-green-500/50 hover:shadow-lg hover:shadow-green-500/20'
                       }
                     `}
                   >

@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { Printer, X, Receipt } from 'lucide-react';
+import { Printer, Receipt } from 'lucide-react';
 import { Dialog, DialogContent } from '../components/ui/dialog';
 import { Button } from '../components/ui/button';
 
@@ -16,6 +16,7 @@ interface TicketModalProps {
     startTime?: number;
     endTime: number | Date;
     usageTime?: string;
+    sellerName?: string;
   } | null;
 }
 
@@ -40,6 +41,19 @@ export function TicketModal({ isOpen, onClose, data }: TicketModalProps) {
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
       <style dangerouslySetInnerHTML={{ __html: `
+        .custom-scrollbar::-webkit-scrollbar {
+          width: 4px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-track {
+          background: #09090b;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb {
+          background: #27272a;
+          border-radius: 10px;
+        }
+        .custom-scrollbar::-webkit-scrollbar-thumb:hover {
+          background: #3f3f46;
+        }
         @media print {
           @page {
             margin: 5mm;
@@ -75,11 +89,11 @@ export function TicketModal({ isOpen, onClose, data }: TicketModalProps) {
       `}} />
 
       <DialogContent
-        className="bg-zinc-950 border-zinc-800 max-w-md w-full p-0 overflow-hidden print:bg-white print:border-none print:shadow-none"
+        className="bg-zinc-950 border-zinc-800 max-w-md w-full p-0 overflow-hidden print:bg-white print:border-none print:shadow-none max-h-[90vh] flex flex-col"
         onPointerDownOutside={(e) => e.preventDefault()}
       >
         {/* Header - Hidden on Print */}
-        <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-5 no-print">
+        <div className="bg-gradient-to-r from-green-600 to-emerald-600 px-6 py-5 no-print flex-shrink-0">
           <div className="flex justify-between items-start text-white">
             <div>
               <h2 className="text-xl font-bold">Comprobante de Pago</h2>
@@ -88,14 +102,11 @@ export function TicketModal({ isOpen, onClose, data }: TicketModalProps) {
                 <span>Folio #{data.folio}</span>
               </div>
             </div>
-            <Button variant="ghost" size="sm" onClick={onClose} className="hover:bg-white/10 text-white">
-              <X className="w-5 h-5" />
-            </Button>
           </div>
         </div>
 
         {/* Ticket Body */}
-        <div className="p-8 space-y-6 bg-zinc-950 print:bg-white print:text-black print:p-0 ticket-container">
+        <div className="p-8 space-y-6 bg-zinc-950 print:bg-white print:text-black print:p-0 ticket-container overflow-y-auto flex-1 custom-scrollbar">
           <div className="text-center space-y-1">
             <h1 className="text-2xl font-black tracking-tighter text-white print:text-black print:text-xl">BILLAR CONTROL</h1>
             <p className="text-zinc-500 text-xs print:text-black italic">Comprobante de Venta</p>
@@ -114,6 +125,12 @@ export function TicketModal({ isOpen, onClose, data }: TicketModalProps) {
               <div className="flex justify-between text-sm print:text-[10px]">
                 <span className="text-zinc-500 print:text-black">Cliente:</span>
                 <span className="text-white print:text-black font-bold uppercase">{data.customerName}</span>
+              </div>
+            )}
+            {data.sellerName && (
+              <div className="flex justify-between text-sm print:text-[10px]">
+                <span className="text-zinc-500 print:text-black">Atendido por:</span>
+                <span className="text-white print:text-black font-bold">{data.sellerName}</span>
               </div>
             )}
           </div>

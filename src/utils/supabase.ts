@@ -23,6 +23,8 @@ export interface DbUser {
   id_rol: number;
   created_at: string;
   updated_at: string;
+  is_online: boolean;
+  last_login: string | null;
 }
 
 export interface DbProduct {
@@ -54,11 +56,22 @@ export interface DbTableSession {
   customer_name: string | null;
 }
 
+export interface DbSessionItem {
+  id: number;
+  session_id: number;
+  product_id: number | null;
+  product_name: string;
+  unit_price: number;
+  quantity: number;
+  created_at: string;
+}
+
 export interface DbSale {
   id_sale: number;
   user_id: number;
   session_id: number | null;
   total_sale: number;
+  customer_name: string | null;
   created_at: string;
 }
 
