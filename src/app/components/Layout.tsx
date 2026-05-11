@@ -12,6 +12,7 @@ import {
   X,
   Users,
   Circle,
+  Shield,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
@@ -148,9 +149,20 @@ export function Layout({ children }: LayoutProps) {
         {/* User & Logout */}
         <div className="p-4 border-t border-zinc-800">
           <div className="flex items-center justify-between px-4 py-3 bg-zinc-800 rounded-lg">
-            <div>
-              <p className="text-sm font-medium text-white">{currentUser}</p>
-              <p className="text-xs text-zinc-500">{getRoleLabel(currentUserRoleId)}</p>
+            <div className="flex-1 min-w-0">
+              <p className="text-sm font-bold text-white truncate">{currentUser}</p>
+              <motion.div
+                initial={{ opacity: 0, y: -5 }}
+                animate={{ opacity: 1, y: 0 }}
+                className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                  currentUserRoleId === 1 
+                    ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' 
+                    : 'bg-zinc-700/50 text-zinc-400 border border-zinc-600'
+                }`}
+              >
+                <Shield className={`w-2.5 h-2.5 ${currentUserRoleId === 1 ? 'fill-purple-400/20' : ''}`} />
+                {currentUserRoleId === 1 ? 'Administrador' : 'Empleado'}
+              </motion.div>
             </div>
             <button
               onClick={handleLogout}
@@ -183,6 +195,26 @@ export function Layout({ children }: LayoutProps) {
             animate={{ opacity: 1, y: 0 }}
             className="bg-zinc-900 border-t border-zinc-800"
           >
+            {/* Mobile User Profile */}
+            <div className="px-6 py-4 border-b border-zinc-800 bg-zinc-800/30">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-full bg-zinc-800 flex items-center justify-center border border-zinc-700">
+                  <span className="text-white font-bold">{currentUser?.charAt(0).toUpperCase()}</span>
+                </div>
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-white truncate">{currentUser}</p>
+                  <div className={`inline-flex items-center gap-1 mt-1 px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                    currentUserRoleId === 1 
+                      ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20' 
+                      : 'bg-zinc-700/50 text-zinc-400 border border-zinc-600'
+                  }`}>
+                    <Shield className={`w-2.5 h-2.5 ${currentUserRoleId === 1 ? 'fill-purple-400/20' : ''}`} />
+                    {currentUserRoleId === 1 ? 'Administrador' : 'Empleado'}
+                  </div>
+                </div>
+              </div>
+            </div>
+
             <nav className="p-4 space-y-2">
               {navItems.map((item) => {
                 const Icon = item.icon;

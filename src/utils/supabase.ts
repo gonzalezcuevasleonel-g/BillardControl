@@ -15,7 +15,7 @@ export const supabase = createClient(supabaseUrl, supabaseKey);
 // DATABASE TYPES
 // ============================================
 
-export type TableStatus = 'available' | 'occupied';
+export type TableStatus = 'available' | 'occupied' | 'maintenance';
 
 export interface DbUser {
   id_user: number;

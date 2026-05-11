@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion } from 'motion/react';
-import { Circle, Play, Square, Clock, Plus, DollarSign } from 'lucide-react';
+import { Circle, Play, Square, Clock, Plus, DollarSign, Wrench } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { Layout } from '../components/Layout';
 import { Button } from '../components/ui/button';
@@ -20,7 +20,7 @@ function getTypeByRate(rate: number) {
 }
 
 export function Tables() {
-  const { tables, startTableSession, currentUserRoleId } = useApp();
+  const { tables, startTableSession, currentUserRoleId, updateTableStatus } = useApp();
   const navigate = useNavigate();
 
   const formatTime = (seconds: number) => {
@@ -88,7 +88,9 @@ export function Tables() {
                 rounded-xl border-2 p-6 shadow-xl transition-all relative overflow-hidden
                 ${table.status === 'occupied'
                   ? 'bg-gradient-to-br from-green-500/10 to-green-500/5 border-green-500/50 shadow-green-500/20'
-                  : 'bg-zinc-900 border-zinc-800'
+                  : table.status === 'maintenance'
+                    ? 'bg-zinc-800/50 border-zinc-700 opacity-75 grayscale'
+                    : 'bg-zinc-900 border-zinc-800'
                 }
               `}
             >
@@ -117,24 +119,38 @@ export function Tables() {
                       className={`
                       p-3 rounded-lg
                       ${table.status === 'occupied'
-                          ? 'bg-green-500/20 border border-green-500/30'
-                          : 'bg-zinc-800 border border-zinc-700'
-                        }
+                        ? 'bg-green-500/20 border border-green-500/30'
+                        : table.status === 'maintenance'
+                        ? 'bg-zinc-900 border border-zinc-800'
+                        : 'bg-zinc-800 border border-zinc-700'
+                      }
                     `}
                     >
-                      <Circle
-                        className={`w-6 h-6 ${table.status === 'occupied' ? 'text-green-400' : 'text-zinc-500'
-                          }`}
-                      />
+                      {table.status === 'maintenance' ? (
+                        <Wrench className="w-6 h-6 text-zinc-600" />
+                      ) : (
+                        <Circle
+                          className={`w-6 h-6 ${table.status === 'occupied' ? 'text-green-400' : 'text-zinc-500'}`}
+                        />
+                      )}
                     </div>
                     <div>
                       <h3 className="text-xl font-bold text-white">{table.name}</h3>
                       <div className="flex gap-1 items-center">
                         <p
-                          className={`text-sm font-medium ${table.status === 'occupied' ? 'text-green-400' : 'text-zinc-500'
-                            }`}
+                          className={`text-sm font-medium ${
+                            table.status === 'occupied' 
+                              ? 'text-green-400' 
+                              : table.status === 'maintenance'
+                              ? 'text-zinc-500'
+                              : 'text-zinc-500'
+                          }`}
                         >
-                          {table.status === 'occupied' ? 'Ocupada' : 'Disponible'}
+                          {table.status === 'occupied' 
+                            ? 'Ocupada' 
+                            : table.status === 'maintenance' 
+                            ? 'Fuera de servicio' 
+                            : 'Disponible'}
                         </p>
                         <span className="px-2 py-0.5 bg-zinc-700 text-xs rounded-full text-zinc-400">
                           {getTypeByRate(table.hourly_rate)}
@@ -145,7 +161,7 @@ export function Tables() {
                 </div>
 
                 {/* Price Info for available tables */}
-                {table.status === 'available' && (
+                {(table.status === 'available' || table.status === 'maintenance') && (
                   <div className="mb-4 p-4 bg-zinc-800/50 rounded-lg border border-zinc-700/50 flex items-center justify-between">
                     <div className="flex items-center gap-2">
                       <DollarSign className="w-4 h-4 text-green-400" />
@@ -207,13 +223,29 @@ export function Tables() {
                       <Play className="w-4 h-4 mr-2" />
                       Iniciar Sesión
                     </Button>
-                  ) : (
+                  ) : table.status === 'occupied' ? (
                     <Button
                       onClick={() => handleManageSession(table.id)}
                       className="w-full bg-purple-500 hover:bg-purple-600 text-white font-semibold shadow-lg shadow-purple-500/30"
                     >
                       <Square className="w-4 h-4 mr-2" />
                       Gestionar Sesión
+                    </Button>
+                  ) : (
+                    <div className="py-2.5 text-center bg-zinc-800/50 rounded-lg border border-zinc-700 text-zinc-500 text-sm font-medium">
+                      Mesa no disponible
+                    </div>
+                  )}
+
+                  {Number(currentUserRoleId) === 1 && (
+                    <Button
+                      variant="ghost"
+                      onClick={() => updateTableStatus(table.id, table.status === 'maintenance' ? 'available' : 'maintenance')}
+                      disabled={table.status === 'occupied'}
+                      className="w-full text-zinc-500 hover:text-white hover:bg-zinc-800 text-xs h-8"
+                    >
+                      <Wrench className="w-3 h-3 mr-2" />
+                      {table.status === 'maintenance' ? 'Habilitar Mesa' : 'Inhabilitar Mesa'}
                     </Button>
                   )}
                 </div>

@@ -9,6 +9,7 @@ import {
   Receipt,
   Printer,
   Trash2,
+  Wrench,
 } from 'lucide-react';
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router';
@@ -65,7 +66,7 @@ function getTableType(hourlyRate: number) {
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { tables, dailyEarnings, sales, products, cancelSale, currentUserRoleId } = useApp();
+  const { tables, dailyEarnings, todaySales, products, cancelSale, currentUserRoleId } = useApp();
   const isAdmin = Number(currentUserRoleId) === 1;
   const [selectedSale, setSelectedSale] = useState<any>(null);
   const [time, setTime] = useState(new Date());
@@ -77,11 +78,6 @@ export function Dashboard() {
 
   const activeTables = tables.filter((t) => t.status === 'occupied').length;
   const availableTables = tables.filter((t) => t.status === 'available').length;
-  const todaySales = sales.filter((sale) => {
-    const saleDate = new Date(sale.timestamp);
-    const today = new Date();
-    return saleDate.toDateString() === today.toDateString();
-  });
 
   const productsSoldToday = todaySales.reduce(
     (sum, sale) => sum + sale.items.reduce((s, item) => s + item.quantity, 0),
@@ -116,7 +112,7 @@ export function Dashboard() {
     },
     {
       title: 'Ventas Totales',
-      value: sales.length,
+      value: todaySales.length,
       icon: TrendingUp,
       color: 'orange',
       glow: 'shadow-orange-500/20',
@@ -257,6 +253,8 @@ export function Dashboard() {
                     transition-all relative overflow-hidden
                     ${table.status === 'occupied'
                       ? 'bg-green-500/10 border-green-500/50 shadow-lg shadow-green-500/20'
+                      : table.status === 'maintenance'
+                      ? 'bg-zinc-900 border-zinc-800 opacity-50'
                       : 'bg-zinc-800 border-zinc-700'
                     }
                   `}
@@ -268,10 +266,14 @@ export function Dashboard() {
                       className="absolute inset-0 bg-green-500/20 blur-md"
                     />
                   )}
-                  <Circle
-                    className={`w-6 h-6 mb-1 relative z-10 ${table.status === 'occupied' ? 'text-green-400' : 'text-zinc-600'
-                      }`}
-                  />
+                  {table.status === 'maintenance' ? (
+                    <Wrench className="w-6 h-6 mb-1 relative z-10 text-zinc-700" />
+                  ) : (
+                    <Circle
+                      className={`w-6 h-6 mb-1 relative z-10 ${table.status === 'occupied' ? 'text-green-400' : 'text-zinc-600'
+                        }`}
+                    />
+                  )}
                   <p
                     className={`text-xs font-medium relative z-10 ${table.status === 'occupied' ? 'text-white' : 'text-zinc-500'
                       }`}
@@ -333,14 +335,30 @@ export function Dashboard() {
                         <div className="flex items-center gap-3">
                           <p className="text-green-400 font-bold">${sale.total.toFixed(2)}</p>
                           <button
-                            onClick={() => setSelectedSale({
-                              folio: sale.id,
-                              items: sale.items,
-                              productsCost: sale.total,
-                              totalCost: sale.total,
-                              endTime: sale.timestamp,
-                              customerName: sale.customer_name || (sale.session_id ? 'Venta de Mesa' : 'Venta Directa')
-                            })}
+                            onClick={() => {
+                              const tableCost = sale.total_time_price || 0;
+                              const productsCost = sale.total - tableCost;
+                              
+                              let usageTime = undefined;
+                              if (sale.start_time && sale.end_time) {
+                                const diff = Math.floor((new Date(sale.end_time).getTime() - new Date(sale.start_time).getTime()) / 1000);
+                                const h = Math.floor(diff / 3600);
+                                const m = Math.floor((diff % 3600) / 60);
+                                const s = diff % 60;
+                                usageTime = `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`;
+                              }
+
+                              setSelectedSale({
+                                folio: sale.id,
+                                items: sale.items,
+                                tableCost: sale.session_id ? tableCost : undefined,
+                                productsCost: productsCost,
+                                totalCost: sale.total,
+                                endTime: sale.timestamp,
+                                usageTime: usageTime,
+                                customerName: sale.customer_name || (sale.session_id ? (sale.table_name || 'Venta de Mesa') : 'Venta Directa')
+                              });
+                            }}
                             className="p-2 hover:bg-zinc-700 rounded-lg text-zinc-500 hover:text-green-400 transition-all"
                             title="Imprimir Ticket"
                           >

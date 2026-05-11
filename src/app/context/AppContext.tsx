@@ -17,7 +17,7 @@ export interface Table {
   id: number;
   name: string;
   hourly_rate: number;
-  status: 'available' | 'occupied';
+  status: 'available' | 'occupied' | 'maintenance';
   startTime: number | null;
   elapsedSeconds: number;
   products: CartItem[];
@@ -40,6 +40,11 @@ export interface Sale {
   total: number;
   items: CartItem[];
   customer_name?: string | null;
+  // New fields for table sessions
+  table_name?: string;
+  start_time?: string;
+  end_time?: string;
+  total_time_price?: number;
 }
 
 interface UserSession {
@@ -52,6 +57,7 @@ interface AppState {
   tables: Table[];
   products: Product[];
   sales: Sale[];
+  todaySales: Sale[];
   dailyEarnings: number;
   isAuthenticated: boolean;
   currentUser: string | null;
@@ -79,6 +85,7 @@ interface AppContextType extends AppState {
   deleteUser: (id_user: number) => Promise<void>;
   updateUserRole: (id_user: number, id_rol: number) => Promise<void>;
   updateUserPassword: (id_user: number, newPassword: string) => Promise<void>;
+  updateTableStatus: (tableId: number, status: 'available' | 'occupied' | 'maintenance') => Promise<void>;
   cancelSale: (saleId: number) => Promise<void>;
 }
 
@@ -121,6 +128,10 @@ function dbSaleToSale(db: any, items: DbSaleItem[] = []): Sale {
     session_id: db.session_id || undefined,
     total: db.total_sale,
     customer_name: db.table_sessions?.customer_name || null,
+    table_name: db.table_sessions?.tables?.name || undefined,
+    start_time: db.table_sessions?.start_time || undefined,
+    end_time: db.table_sessions?.end_time || undefined,
+    total_time_price: db.table_sessions?.total_time_price || undefined,
     items: items.map(i => ({
       productId: i.product_id ?? 0,
       name: i.product_name,
@@ -141,6 +152,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       tables: [],
       products: [],
       sales: [],
+      todaySales: [],
       dailyEarnings: 0,
       isAuthenticated: !!userSession,
       currentUser: userSession?.username || null,
@@ -148,6 +160,10 @@ export function AppProvider({ children }: { children: ReactNode }) {
       currentUserRoleId: userSession ? Number(userSession.id_rol) : null,
       isLoading: true,
     };
+  });
+
+  const [lastCutTimestamp, setLastCutTimestamp] = useState<number>(() => {
+    return Number(localStorage.getItem('lastCutTimestamp') || 0);
   });
 
   const loadData = useCallback(async () => {
@@ -175,7 +191,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const { data: salesData, error: salesError } = await supabase
         .from('sales')
-        .select('*, sale_items(*), table_sessions(customer_name)')
+        .select('*, sale_items(*), table_sessions(*, tables(name))')
         .order('created_at', { ascending: false });
 
       if (salesError) throw salesError;
@@ -192,26 +208,27 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const sales = (salesData || []).map((s: any) => dbSaleToSale(s, s.sale_items || []));
 
-      const dailyEarnings = sales
-        .filter(s => {
-          const saleDate = new Date(s.timestamp);
-          const today = new Date();
-          return saleDate.toDateString() === today.toDateString();
-        })
-        .reduce((sum, s) => sum + s.total, 0);
+      const todaySales = sales.filter(s => {
+        const saleDate = new Date(s.timestamp);
+        const today = new Date();
+        return saleDate.toDateString() === today.toDateString() && s.timestamp > lastCutTimestamp;
+      });
+
+      const dailyEarnings = todaySales.reduce((sum, s) => sum + s.total, 0);
 
       setState(prev => ({
         ...prev,
         products,
         tables,
         sales,
+        todaySales,
         dailyEarnings,
       }));
     } catch (err: any) {
       console.error('Error loading data:', err);
       toast.error('Error al cargar datos: ' + (err.message || 'Desconocido'));
     }
-  }, []);
+  }, [lastCutTimestamp]);
 
   // Check auth state and fetch data on mount
   useEffect(() => {
@@ -665,12 +682,30 @@ export function AppProvider({ children }: { children: ReactNode }) {
     await loadData();
   };
 
-  const closeDailyCut = (cashDifference: number) => {
+  const updateTableStatus = async (tableId: number, status: 'available' | 'occupied' | 'maintenance') => {
     try {
-    console.log('Corte:', cashDifference);
+      const { error } = await supabase
+        .from('tables')
+        .update({ status })
+        .eq('id', tableId);
+
+      if (error) throw error;
+      await loadData();
+      toast.success(status === 'maintenance' ? 'Mesa puesta fuera de servicio' : 'Mesa habilitada');
+    } catch (err: any) {
+      console.error('Error updating table status:', err);
+      toast.error('Error al actualizar estado de la mesa: ' + (err.message || 'Desconocido'));
+    }
+  };
+
+  const closeDailyCut = (cashDifference: number) => {
+    const now = Date.now();
+    setLastCutTimestamp(now);
+    localStorage.setItem('lastCutTimestamp', now.toString());
+    
     setState(prev => ({
       ...prev,
-      sales: [],
+      todaySales: [],
       dailyEarnings: 0,
     }));
 
@@ -694,6 +729,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
         removeProductFromTable,
         createPOSSale,
         updateProduct,
+        updateTableStatus,
         addProduct,
         addTable,
         updateTable,
