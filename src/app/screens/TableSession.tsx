@@ -20,6 +20,16 @@ import { TicketModal } from '../components/TicketModal';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
+import { 
+  AlertDialog, 
+  AlertDialogAction, 
+  AlertDialogCancel, 
+  AlertDialogContent, 
+  AlertDialogDescription, 
+  AlertDialogFooter, 
+  AlertDialogHeader, 
+  AlertDialogTitle 
+} from '../components/ui/alert-dialog';
 
 export function TableSession() {
   const { tableId } = useParams();
@@ -29,6 +39,7 @@ export function TableSession() {
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [quantity, setQuantity] = useState(1);
   const [productSearch, setProductSearch] = useState("");
+  const [showEndSessionAlert, setShowEndSessionAlert] = useState(false);
 
   // Receipt state — stores a snapshot of the session when "Finalizar" is pressed
   const [receipt, setReceipt] = useState<{
@@ -243,7 +254,7 @@ export function TableSession() {
 
             {/* End Session Button */}
             <Button
-              onClick={handleEndSession}
+              onClick={() => setShowEndSessionAlert(true)}
               className="w-full bg-red-500 hover:bg-red-600 text-white font-semibold shadow-lg shadow-red-500/30"
             >
               <Receipt className="w-4 h-4 mr-2" />
@@ -425,6 +436,29 @@ export function TableSession() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Confirmation Alert */}
+      <AlertDialog open={showEndSessionAlert} onOpenChange={setShowEndSessionAlert}>
+        <AlertDialogContent className="bg-zinc-900 border-zinc-800">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-white">¿Estás seguro de finalizar la sesión?</AlertDialogTitle>
+            <AlertDialogDescription className="text-zinc-400">
+              Esta acción cerrará la cuenta de la mesa **{table.name}**. Una vez finalizada, ya no hay vuelta atrás y se generará el ticket de venta.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel className="bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700 hover:text-white">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={handleEndSession}
+              className="bg-red-500 hover:bg-red-600 text-white border-none"
+            >
+              Sí, Cobrar y Finalizar
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </Layout>
   );
 }

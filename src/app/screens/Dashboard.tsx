@@ -21,7 +21,7 @@ import { Button } from '../components/ui/button';
 
 export function Dashboard() {
   const navigate = useNavigate();
-  const { tables, dailyEarnings, todaySales, products, cancelSale, currentUserRoleId, fetchUsers } = useApp();
+  const { tables, dailyEarnings, todaySales, products, cancelSale, currentUserRoleId, fetchUsers, currentUserId } = useApp();
   const isAdmin = Number(currentUserRoleId) === 1;
   const [selectedSale, setSelectedSale] = useState<any>(null);
   const [time, setTime] = useState(new Date());
@@ -32,11 +32,15 @@ export function Dashboard() {
     
     if (isAdmin) {
       const loadStaff = async () => {
-        const users = await fetchUsers();
-        setStaff(users);
+        try {
+          const users = await fetchUsers();
+          setStaff(users);
+        } catch (err) {
+          console.error('Error in staff monitor:', err);
+        }
       };
       loadStaff();
-      const staffTimer = setInterval(loadStaff, 30000); // Update every 30s
+      const staffTimer = setInterval(loadStaff, 10000); // Update every 10s
       return () => {
         clearInterval(timer);
         clearInterval(staffTimer);
@@ -54,7 +58,9 @@ export function Dashboard() {
     0
   );
 
-  const recentActivity = [...(todaySales ?? [])]
+  const visibleTodaySales = isAdmin ? (todaySales ?? []) : (todaySales ?? []).filter(s => s.user_id === currentUserId);
+
+  const recentActivity = [...visibleTodaySales]
     .sort((a, b) => b.timestamp - a.timestamp)
     .slice(0, 5);
   const statsCards = [

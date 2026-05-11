@@ -8,6 +8,8 @@ import { Inventory } from './screens/Inventory';
 import { CashRegister } from './screens/CashRegister';
 import { TablesEdit } from './screens/TablesEdit';
 import { Users } from './screens/Users';
+import { Statistics } from './screens/Statistics';
+import { History } from './screens/History';
 import { useApp } from './context/AppContext';
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
@@ -100,6 +102,22 @@ export const router = createBrowserRouter([
     element: (
       <ProtectedRoute>
         <Users />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/statistics',
+    element: (
+      <ProtectedRoute>
+        <Statistics />
+      </ProtectedRoute>
+    ),
+  },
+  {
+    path: '/history',
+    element: (
+      <ProtectedRoute>
+        <History />
       </ProtectedRoute>
     ),
   },

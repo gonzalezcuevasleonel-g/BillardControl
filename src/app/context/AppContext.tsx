@@ -78,6 +78,7 @@ interface AppContextType extends AppState {
   createPOSSale: (items: CartItem[], customerName?: string) => Promise<void>;
   updateProduct: (product: Product) => Promise<void>;
   addProduct: (product: Omit<Product, 'id'>) => Promise<void>;
+  deleteProduct: (id: number) => Promise<void>;
   addTable: (name: string, hourly_rate?: number) => Promise<void>;
   updateTable: (id: number, newName: string, hourly_rate?: number) => Promise<void>;
   deleteTable: (id: number) => Promise<void>;
@@ -168,9 +169,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
     };
   });
 
-  const [lastCutTimestamp, setLastCutTimestamp] = useState<number>(() => {
-    return Number(localStorage.getItem('lastCutTimestamp') || 0);
-  });
+  const [lastCutTimestamp, setLastCutTimestamp] = useState<number>(0);
 
   const loadData = useCallback(async () => {
     try {
@@ -195,6 +194,15 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       if (sessionsError) throw sessionsError;
 
+      const { data: cutsData } = await supabase
+        .from('cash_cuts')
+        .select('created_at')
+        .order('created_at', { ascending: false })
+        .limit(1);
+
+      const lastCutTime = cutsData?.[0]?.created_at ? new Date(cutsData[0].created_at).getTime() : 0;
+      setLastCutTimestamp(lastCutTime);
+
       const { data: salesData, error: salesError } = await supabase
         .from('sales')
         .select('*, sale_items(*), table_sessions(*, tables(name)), users(username)')
@@ -217,7 +225,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
       const todaySales = sales.filter(s => {
         const saleDate = new Date(s.timestamp);
         const today = new Date();
-        return saleDate.toDateString() === today.toDateString() && s.timestamp > lastCutTimestamp;
+        return saleDate.toDateString() === today.toDateString() && s.timestamp > lastCutTime;
       });
 
       const dailyEarnings = todaySales.reduce((sum, s) => sum + s.total, 0);
@@ -241,12 +249,33 @@ export function AppProvider({ children }: { children: ReactNode }) {
     const init = async () => {
       const savedUser = localStorage.getItem('billarUserSession');
       if (savedUser) {
+        const user = JSON.parse(savedUser);
+        // Ensure user is marked as online on refresh
+        await supabase
+          .from('users')
+          .update({ is_online: true, last_login: new Date().toISOString() })
+          .eq('id_user', user.id_user);
+          
         await loadData();
       }
       setState(prev => ({ ...prev, isLoading: false }));
     };
     init();
   }, []);
+
+  // Heartbeat to keep user online
+  useEffect(() => {
+    if (!state.isAuthenticated || !state.currentUserId) return;
+
+    const heartbeat = setInterval(async () => {
+      await supabase
+        .from('users')
+        .update({ is_online: true, last_login: new Date().toISOString() })
+        .eq('id_user', state.currentUserId);
+    }, 60000); // Every minute
+
+    return () => clearInterval(heartbeat);
+  }, [state.isAuthenticated, state.currentUserId]);
 
   // Timer effect
   useEffect(() => {
@@ -722,16 +751,24 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const closeDailyCut = (cashDifference: number) => {
-    const now = Date.now();
-    setLastCutTimestamp(now);
-    localStorage.setItem('lastCutTimestamp', now.toString());
-    
-    setState(prev => ({
-      ...prev,
-      todaySales: [],
-      dailyEarnings: 0,
-    }));
+  const closeDailyCut = async (cashDifference: number) => {
+    const userId = state.currentUserId;
+    if (!userId) return;
+
+    const { error } = await supabase.from('cash_cuts').insert({
+      user_id: userId,
+      total_expected: state.dailyEarnings,
+      cash_in_box: state.dailyEarnings + cashDifference,
+      difference: cashDifference,
+    });
+
+    if (error) {
+      console.error('Error recording cash cut:', error);
+      toast.error('Error al registrar corte de caja');
+      return;
+    }
+
+    await loadData(); // Reload to update lastCutTimestamp
   };
 
   return (
@@ -761,6 +798,16 @@ export function AppProvider({ children }: { children: ReactNode }) {
             return [];
           }
           return data as DbUser[];
+        },
+        deleteProduct: async (id: number) => {
+          const { error } = await supabase.from('products').delete().eq('id', id);
+          if (error) {
+            console.error('Error deleting product:', error);
+            toast.error('No se puede eliminar: el producto tiene ventas registradas.');
+            return;
+          }
+          toast.success('Producto eliminado');
+          await loadData();
         },
         deleteUser: async (id_user: number) => {
           const { error } = await supabase.from('users').delete().eq('id_user', id_user);

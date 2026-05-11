@@ -9,7 +9,7 @@ import { toast } from 'sonner';
 import { Input } from '../components/ui/input';
 
 export function Sales() {
-  const { products, sales, createPOSSale, cancelSale, currentUserRoleId } = useApp();
+  const { products, sales, createPOSSale, cancelSale, currentUserRoleId, currentUserId } = useApp();
   const isAdmin = Number(currentUserRoleId) === 1;
   const [cart, setCart] = useState<CartItem[]>([]);
   const [saleSearch, setSaleSearch] = useState('');
@@ -93,7 +93,9 @@ export function Sales() {
     { id: 'snack', name: 'Snacks', color: 'orange' },
   ];
 
-  const filteredSales = (sales ?? [])
+  const visibleSales = isAdmin ? (sales ?? []) : (sales ?? []).filter(s => s.user_id === currentUserId);
+
+  const filteredSales = visibleSales
     .filter((sale) => sale.id.toString().includes(saleSearch))
     .sort((a, b) => b.timestamp - a.timestamp);
 

@@ -13,6 +13,8 @@ import {
   Users,
   Circle,
   Shield,
+  BarChart3,
+  History,
 } from 'lucide-react';
 import { useState } from 'react';
 import { useApp } from '../context/AppContext';
@@ -132,22 +134,56 @@ export function Layout({ children }: LayoutProps) {
           })}
 
           {currentUserRoleId === 1 && (
-            <Link to="/users">
-              <motion.div
-                whileHover={{ scale: 1.02, x: 4 }}
-                whileTap={{ scale: 0.98 }}
-                className={`
-                  flex items-center gap-3 px-4 py-3 rounded-lg transition-all
-                  ${location.pathname === '/users'
-                    ? 'bg-green-500/20 text-green-400 shadow-lg shadow-green-500/20'
-                    : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
-                  }
-                `}
-              >
-                <Users className="w-5 h-5" />
-                <span className="font-medium">Usuarios</span>
-              </motion.div>
-            </Link>
+            <>
+              <Link to="/users">
+                <motion.div
+                  whileHover={{ scale: 1.02, x: 4 }}
+                  whileTap={{ scale: 0.98 }}
+                  className={`
+                    flex items-center gap-3 px-4 py-3 rounded-lg transition-all
+                    ${location.pathname === '/users'
+                      ? 'bg-green-500/20 text-green-400 shadow-lg shadow-green-500/20'
+                      : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                    }
+                  `}
+                >
+                  <Users className="w-5 h-5" />
+                  <span className="font-medium">Usuarios</span>
+                </motion.div>
+              </Link>
+              <Link to="/statistics">
+                <motion.div
+                  whileHover={{ scale: 1.02, x: 4 }}
+                  whileTap={{ scale: 0.98 }}
+                  className={`
+                    flex items-center gap-3 px-4 py-3 rounded-lg transition-all
+                    ${location.pathname === '/statistics'
+                      ? 'bg-purple-500/20 text-purple-400 shadow-lg shadow-purple-500/20'
+                      : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                    }
+                  `}
+                >
+                  <BarChart3 className="w-5 h-5" />
+                  <span className="font-medium">Estadísticas</span>
+                </motion.div>
+              </Link>
+              <Link to="/history">
+                <motion.div
+                  whileHover={{ scale: 1.02, x: 4 }}
+                  whileTap={{ scale: 0.98 }}
+                  className={`
+                    flex items-center gap-3 px-4 py-3 rounded-lg transition-all
+                    ${location.pathname === '/history'
+                      ? 'bg-blue-500/20 text-blue-400 shadow-lg shadow-blue-500/20'
+                      : 'text-zinc-400 hover:bg-zinc-800 hover:text-white'
+                    }
+                  `}
+                >
+                  <History className="w-5 h-5" />
+                  <span className="font-medium">Historial</span>
+                </motion.div>
+              </Link>
+            </>
           )}
         </nav>
 
