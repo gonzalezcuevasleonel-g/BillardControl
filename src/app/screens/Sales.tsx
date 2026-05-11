@@ -370,7 +370,8 @@ export function Sales() {
                                 totalCost: sale.total,
                                 endTime: sale.timestamp,
                                 usageTime: usageTime,
-                                customerName: sale.customer_name || (sale.session_id ? (sale.table_name || 'Venta de Mesa') : 'Venta Directa')
+                                customerName: sale.customer_name || (sale.session_id ? (sale.table_name || 'Venta de Mesa') : 'Venta Directa'),
+                                sellerName: sale.seller_name
                               });
                             }}
                             className="p-1.5 hover:bg-zinc-700 rounded text-zinc-500 hover:text-green-400 transition-all"

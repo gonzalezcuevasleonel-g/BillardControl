@@ -25,3 +25,7 @@ CREATE POLICY "Permitir acceso total" ON session_items
 
 -- Agregar columna customer_name a la tabla sales si no existe
 ALTER TABLE sales ADD COLUMN IF NOT EXISTS customer_name TEXT;
+
+-- Agregar columnas de estado a la tabla de usuarios
+ALTER TABLE users ADD COLUMN IF NOT EXISTS is_online BOOLEAN DEFAULT false;
+ALTER TABLE users ADD COLUMN IF NOT EXISTS last_login TIMESTAMP WITH TIME ZONE;

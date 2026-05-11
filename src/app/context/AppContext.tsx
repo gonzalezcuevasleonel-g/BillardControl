@@ -45,6 +45,7 @@ export interface Sale {
   start_time?: string;
   end_time?: string;
   total_time_price?: number;
+  seller_name?: string;
 }
 
 interface UserSession {
@@ -139,6 +140,7 @@ function dbSaleToSale(db: any, items: DbSaleItem[] = []): Sale {
     start_time: db.table_sessions?.start_time || undefined,
     end_time: db.table_sessions?.end_time || undefined,
     total_time_price: db.table_sessions?.total_time_price || undefined,
+    seller_name: db.users?.username || 'Sistema',
     items: items.map(i => ({
       productId: i.product_id ?? 0,
       name: i.product_name,
@@ -195,7 +197,7 @@ export function AppProvider({ children }: { children: ReactNode }) {
 
       const { data: salesData, error: salesError } = await supabase
         .from('sales')
-        .select('*, sale_items(*), table_sessions(*, tables(name))')
+        .select('*, sale_items(*), table_sessions(*, tables(name)), users(username)')
         .order('created_at', { ascending: false });
 
       if (salesError) throw salesError;
@@ -285,6 +287,12 @@ export function AppProvider({ children }: { children: ReactNode }) {
       };
       localStorage.setItem('billarUserSession', JSON.stringify(userSession));
 
+      // Mark user as online
+      await supabase
+        .from('users')
+        .update({ is_online: true, last_login: new Date().toISOString() })
+        .eq('id_user', user.id_user);
+
       setState(prev => ({
         ...prev,
         isAuthenticated: true,
@@ -302,7 +310,13 @@ export function AppProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const logout = (): void => {
+  const logout = async () => {
+    if (state.currentUserId) {
+      await supabase
+        .from('users')
+        .update({ is_online: false })
+        .eq('id_user', state.currentUserId);
+    }
     localStorage.removeItem('billarUserSession');
     setState({
       tables: [],

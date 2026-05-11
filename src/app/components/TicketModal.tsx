@@ -16,6 +16,7 @@ interface TicketModalProps {
     startTime?: number;
     endTime: number | Date;
     usageTime?: string;
+    sellerName?: string;
   } | null;
 }
 
@@ -124,6 +125,12 @@ export function TicketModal({ isOpen, onClose, data }: TicketModalProps) {
               <div className="flex justify-between text-sm print:text-[10px]">
                 <span className="text-zinc-500 print:text-black">Cliente:</span>
                 <span className="text-white print:text-black font-bold uppercase">{data.customerName}</span>
+              </div>
+            )}
+            {data.sellerName && (
+              <div className="flex justify-between text-sm print:text-[10px]">
+                <span className="text-zinc-500 print:text-black">Atendido por:</span>
+                <span className="text-white print:text-black font-bold">{data.sellerName}</span>
               </div>
             )}
           </div>

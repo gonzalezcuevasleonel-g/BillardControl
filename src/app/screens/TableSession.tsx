@@ -24,7 +24,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/
 export function TableSession() {
   const { tableId } = useParams();
   const navigate = useNavigate();
-  const { tables, products, addProductToTable, removeProductFromTable, endTableSession } = useApp();
+  const { tables, products, addProductToTable, removeProductFromTable, endTableSession, currentUser } = useApp();
   const [showProductModal, setShowProductModal] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState<any>(null);
   const [quantity, setQuantity] = useState(1);
@@ -42,6 +42,7 @@ export function TableSession() {
     endTime: Date;
     customerName: string;
     usageTime: string;
+    sellerName?: string;
   } | null>(null);
 
   const table = tables.find((t) => t.id === Number(tableId));
@@ -70,7 +71,8 @@ export function TableSession() {
             productsCost: receipt.productsCost,
             totalCost: receipt.totalCost,
             endTime: receipt.endTime,
-            usageTime: receipt.usageTime
+            usageTime: receipt.usageTime,
+            sellerName: receipt.sellerName
           }}
         />
       </Layout>
@@ -128,6 +130,7 @@ export function TableSession() {
       endTime: new Date(),
       customerName: table.customerName || "Cliente",
       usageTime: formatTime(table.elapsedSeconds),
+      sellerName: currentUser || 'Sistema',
     });
 
     // 2. End the session

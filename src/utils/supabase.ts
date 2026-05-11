@@ -23,6 +23,8 @@ export interface DbUser {
   id_rol: number;
   created_at: string;
   updated_at: string;
+  is_online: boolean;
+  last_login: string | null;
 }
 
 export interface DbProduct {
