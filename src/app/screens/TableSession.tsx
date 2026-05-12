@@ -20,15 +20,15 @@ import { TicketModal } from '../components/TicketModal';
 import { Button } from '../components/ui/button';
 import { Input } from '../components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '../components/ui/dialog';
-import { 
-  AlertDialog, 
-  AlertDialogAction, 
-  AlertDialogCancel, 
-  AlertDialogContent, 
-  AlertDialogDescription, 
-  AlertDialogFooter, 
-  AlertDialogHeader, 
-  AlertDialogTitle 
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle
 } from '../components/ui/alert-dialog';
 
 export function TableSession() {
@@ -449,7 +449,7 @@ export function TableSession() {
             <AlertDialogCancel className="bg-zinc-800 text-zinc-400 border-zinc-700 hover:bg-zinc-700 hover:text-white">
               Cancelar
             </AlertDialogCancel>
-            <AlertDialogAction 
+            <AlertDialogAction
               onClick={handleEndSession}
               className="bg-red-500 hover:bg-red-600 text-white border-none"
             >
@@ -461,4 +461,3 @@ export function TableSession() {
     </Layout>
   );
 }
-
