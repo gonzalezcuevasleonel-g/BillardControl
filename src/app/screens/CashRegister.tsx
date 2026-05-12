@@ -42,7 +42,7 @@ export function CashRegister() {
     0
   );
 
-  const handleCloseCut = () => {
+  const handleCloseCut = async () => {
     const occupiedTables = tables.filter(t => t.status === 'occupied');
     if (occupiedTables.length > 0) {
       toast.error(`No puedes cerrar el día con mesas activas (${occupiedTables.map(t => t.name).join(', ')})`);
@@ -57,7 +57,7 @@ export function CashRegister() {
 
     const difference = isAdmin ? inputVal : inputVal - dailyEarnings;
 
-    closeDailyCut(difference);
+    await closeDailyCut(difference);
     setShowCloseModal(false);
     setCashDifference('');
     

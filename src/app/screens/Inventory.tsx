@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Package, AlertTriangle, Edit, Plus, Search } from 'lucide-react';
+import { Package, AlertTriangle, Edit, Plus, Search, Trash2 } from 'lucide-react';
 import { useApp, Product } from '../context/AppContext';
 import { Layout } from '../components/Layout';
 import { Button } from '../components/ui/button';
@@ -12,7 +12,7 @@ import { toast } from 'sonner';
 
 
 export function Inventory() {
-  const { products, updateProduct, addProduct, currentUserRoleId } = useApp();
+  const { products, updateProduct, addProduct, deleteProduct, currentUserRoleId } = useApp();
   const isAdmin = Number(currentUserRoleId) === 1;
 
   // Debug: log role info to browser console
@@ -29,6 +29,8 @@ export function Inventory() {
     category: 'beer' as 'beer' | 'snack' | 'drink',
     cost: '',
   });
+  const [stockToAdd, setStockToAdd] = useState('0');
+  const [showStockModal, setShowStockModal] = useState(false);
 
   const filteredProducts = products.filter((product) =>
     product.name.toLowerCase().includes(searchTerm.toLowerCase())
@@ -128,13 +130,15 @@ export function Inventory() {
               </span>
             </p>
           </div>
-          <Button
-            onClick={openAddModal}
-            className="bg-green-500 hover:bg-green-600 text-black font-semibold shadow-lg shadow-green-500/30"
-          >
-            <Plus className="w-4 h-4 mr-2" />
-            Agregar Producto
-          </Button>
+          {isAdmin && (
+            <Button
+              onClick={openAddModal}
+              className="bg-green-500 hover:bg-green-600 text-black font-semibold shadow-lg shadow-green-500/30"
+            >
+              <Plus className="w-4 h-4 mr-2" />
+              Agregar Producto
+            </Button>
+          )}
         </div>
 
         {/* Search */}
@@ -295,14 +299,48 @@ export function Inventory() {
                           )}
                         </td>
                         <td className="px-6 py-4">
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            onClick={() => openEditModal(product)}
-                            className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
-                          >
-                            <Edit className="w-4 h-4" />
-                          </Button>
+                          <div className="flex items-center gap-2">
+                            {isAdmin && (
+                              <>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => openEditModal(product)}
+                                  className="text-purple-400 hover:text-purple-300 hover:bg-purple-500/10"
+                                  title="Editar detalles"
+                                >
+                                  <Edit className="w-4 h-4" />
+                                </Button>
+                                <Button
+                                  variant="ghost"
+                                  size="sm"
+                                  onClick={() => {
+                                    if (window.confirm('¿Estás seguro de eliminar este producto?')) {
+                                      deleteProduct(product.id);
+                                    }
+                                  }}
+                                  className="text-red-400 hover:text-red-300 hover:bg-red-500/10"
+                                  title="Eliminar producto"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </Button>
+                              </>
+                            )}
+                            <Button
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => {
+                                setEditingProduct(product);
+                                setStockToAdd('0');
+                                setShowStockModal(true);
+                              }}
+                              className="text-green-400 hover:text-green-300 hover:bg-green-500/10 gap-2"
+                              title="Agregar Stock"
+                            >
+                              <Plus className="w-4 h-4" />
+                              {!isAdmin && <span className="text-xs">Abastecer</span>}
+                            </Button>
+                          </div>
                         </td>
                       </motion.tr>
                     );
@@ -445,6 +483,66 @@ export function Inventory() {
                 className="flex-1 bg-green-500 hover:bg-green-600 text-black font-semibold"
               >
                 {editingProduct ? 'Actualizar' : 'Agregar'}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Add Stock Modal (Employee) */}
+      <Dialog open={showStockModal} onOpenChange={setShowStockModal}>
+        <DialogContent className="bg-zinc-900 border-zinc-800 max-w-sm">
+          <DialogHeader>
+            <DialogTitle className="text-white flex items-center gap-2">
+              <Plus className="text-green-500" />
+              Abastecer Inventario
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 pt-4">
+            <div className="p-4 bg-zinc-800 rounded-xl border border-zinc-700">
+              <p className="text-zinc-400 text-sm mb-1">Producto</p>
+              <p className="text-xl font-bold text-white">{editingProduct?.name}</p>
+              <div className="mt-4 flex justify-between items-center">
+                <span className="text-zinc-400 text-sm">Stock Actual:</span>
+                <span className="text-white font-bold">{editingProduct?.stock} unidades</span>
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label className="text-zinc-400">Cantidad a recibir del proveedor</Label>
+              <Input
+                type="number"
+                min="0"
+                value={stockToAdd}
+                onChange={(e) => setStockToAdd(e.target.value)}
+                className="bg-zinc-800 border-zinc-700 text-white text-2xl h-14 text-center font-bold"
+                autoFocus
+              />
+              <p className="text-xs text-zinc-500 text-center">
+                El stock final será: {(editingProduct?.stock || 0) + (parseInt(stockToAdd) || 0)} unidades
+              </p>
+            </div>
+
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => setShowStockModal(false)}
+                className="flex-1 border-zinc-700"
+              >
+                Cancelar
+              </Button>
+              <Button
+                onClick={async () => {
+                  if (editingProduct && stockToAdd) {
+                    const newStock = editingProduct.stock + parseInt(stockToAdd);
+                    await updateProduct({ ...editingProduct, stock: newStock });
+                    toast.success(`Se agregaron ${stockToAdd} unidades a ${editingProduct.name}`);
+                    setShowStockModal(false);
+                  }
+                }}
+                className="flex-1 bg-green-500 hover:bg-green-600 text-black font-bold"
+              >
+                Confirmar Ingreso
               </Button>
             </div>
           </div>
