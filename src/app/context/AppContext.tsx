@@ -150,7 +150,7 @@ function dbSaleToSale(db: any, items: DbSaleItem[] = []): Sale {
     })),
 
     // Extra fields used by Dashboard receipt (kept loose to avoid changing Sale interface)
-    ...(tableSession ? { table_session: tableSession, table: table } : {}),
+    ...(db.table_sessions ? { table_session: db.table_sessions, table: db.table_sessions.tables } : {}),
   } as any;
 }
 
